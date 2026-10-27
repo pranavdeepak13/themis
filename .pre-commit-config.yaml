@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: no-transcripts
+        name: refuse real Claude session data
+        entry: python3 scripts/check_no_transcripts.py
+        language: system
+        pass_filenames: false
