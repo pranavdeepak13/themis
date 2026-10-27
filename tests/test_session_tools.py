@@ -54,9 +54,10 @@ def test_export_markdown_is_redacted_and_tool_output_is_optional(tree: dict[str,
     assert FAKE_KEY not in plain and "login bug" in plain and "**Tool call** `Skill`" in plain
     assert "Tool output" not in plain
     assert "Tool output" in export_markdown(prof, s, include_tool_output=True)
+    before = set(tree["alpha"].rglob("*.md"))
     res = export_session(prof, s, confirm=CONFIRM)
     assert Path(res.path or "").read_text() == plain
-    assert not list(tree["alpha"].rglob("*.md"))  # nothing written under the profile
+    assert set(tree["alpha"].rglob("*.md")) == before  # nothing written under the profile
 
 
 def test_meta_rename_and_tags(tree: dict[str, Path]) -> None:

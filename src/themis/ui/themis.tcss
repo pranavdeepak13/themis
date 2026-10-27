@@ -265,3 +265,66 @@ ModalScreen {
     height: auto;
     max-height: 16;
 }
+
+/* ---- resource sections ---- */
+ResourcePane, SettingsPane, ComparePane, DoctorPane {
+    height: 1fr;
+    width: 1fr;
+}
+
+#r-search, #c-search {
+    margin: 0 1;
+}
+
+#r-status, #s-status, #c-status, #d-status {
+    height: auto;
+    padding: 0 1;
+    color: $text-muted;
+}
+
+#r-body {
+    height: 1fr;
+}
+
+#r-body > DataTable {
+    width: 3fr;
+    height: 1fr;
+}
+
+#r-detail {
+    width: 2fr;
+    height: 1fr;
+    border-left: tall $primary 30%;
+    padding: 0 1;
+}
+
+#r-actions {
+    height: auto;
+}
+
+#r-actions Button {
+    margin-right: 1;
+}
+
+#r-tabs {
+    height: 1fr;
+}
+
+#c-table, #d-table {
+    height: 1fr;
+}
+
+#d-detail {
+    height: auto;
+    max-height: 5;
+    padding: 0 1;
+}
+
+#edit-area {
+    height: 24;
+}
+
+#dialog.wide {
+    width: 90%;
+    max-width: 130;
+}

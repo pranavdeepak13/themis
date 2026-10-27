@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from textual import on
+from textual import on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
@@ -12,19 +12,33 @@ from textual.screen import ModalScreen
 from textual.widgets import ContentSwitcher, Footer, Header, OptionList, Tab, Tabs
 from textual.widgets.option_list import Option
 
+from themis.resources.store import ResourceData, load_all
 from themis.ui.screens.placeholder import PlaceholderPane
+from themis.ui.screens.resources import ComparePane, DoctorPane, LoadingMixin, ResourcePane, SettingsPane
 from themis.ui.screens.sessions import SessionsPane
 from themis.ui.widgets.modals import HelpModal
 
 SECTIONS: list[tuple[str, str, str, str]] = [  # id, label, phase, blurb
     ("sessions", "Sessions", "", ""),
-    ("skills", "Skills", "Phase 3", "Skills across profiles: scope, drift, usage and token cost."),
-    ("plugins", "Plugins", "Phase 3", "Installed and enabled plugins and marketplaces per profile."),
-    ("mcp", "MCP", "Phase 3", "MCP servers per profile, with redacted config and an on-demand health check."),
-    ("hooks", "Hooks", "Phase 3", "Hooks from user, project, local and plugin settings."),
-    ("settings", "Settings", "Phase 3", "Merged settings with precedence and origin, secrets redacted."),
+    ("skills", "Skills", "", ""),
+    ("agents", "Agents", "", ""),
+    ("commands", "Commands", "", ""),
+    ("plugins", "Plugins", "", ""),
+    ("mcp", "MCP", "", ""),
+    ("hooks", "Hooks", "", ""),
+    ("settings", "Settings", "", ""),
+    ("compare", "Compare", "", ""),
+    ("doctor", "Doctor", "", ""),
     ("insights", "Insights", "Phase 4", "Token dashboards and the optimisation advisor."),
 ]
+RESOURCE_KINDS: dict[str, tuple[str, ...]] = {
+    "skills": ("skill",),
+    "agents": ("agent",),
+    "commands": ("command",),
+    "plugins": ("plugin", "marketplace"),
+    "mcp": ("mcp",),
+    "hooks": ("hook",),
+}
 
 
 def _tab_id(name: str) -> str:
@@ -70,12 +84,47 @@ class ThemisApp(App[None]):
                 for sid, label, phase, blurb in SECTIONS:
                     if sid == "sessions":
                         yield SessionsPane(id=sid)
+                    elif sid in RESOURCE_KINDS:
+                        yield ResourcePane(RESOURCE_KINDS[sid], id=sid)
+                    elif sid == "settings":
+                        yield SettingsPane(id=sid)
+                    elif sid == "compare":
+                        yield ComparePane(id=sid)
+                    elif sid == "doctor":
+                        yield DoctorPane(id=sid)
                     else:
                         yield PlaceholderPane(label, phase, blurb, id=sid)
         yield Footer()
 
     def on_mount(self) -> None:
         self.query_one("#nav", OptionList).highlighted = 0
+        self.resource_data: ResourceData | None = None
+        self._load_resources()
+
+    # ------------------------------------------------------------------ resource data
+
+    def _resource_panes(self) -> list[LoadingMixin]:
+        return list(self.query("ResourcePane, SettingsPane, ComparePane, DoctorPane"))  # type: ignore[arg-type]
+
+    @work(thread=True, exclusive=True, group="resources")
+    def _load_resources(self) -> None:
+        try:
+            data = load_all()
+        except Exception as exc:  # noqa: BLE001 - surface any scan failure in the panes instead of crashing
+            self.call_from_thread(self._resources_ready, None, f"Could not scan resources: {exc.__class__.__name__}")
+            return
+        self.call_from_thread(self._resources_ready, data, None)
+
+    def _resources_ready(self, data: ResourceData | None, error: str | None) -> None:
+        self.resource_data = data
+        for pane in self._resource_panes():
+            pane.set_data(data, error)
+
+    def reload_resources(self) -> None:
+        """Rescan resources after a write action."""
+        for pane in self._resource_panes():
+            pane.set_data(None)
+        self._load_resources()
 
     # ------------------------------------------------------------------ navigation
 
@@ -114,13 +163,20 @@ class ThemisApp(App[None]):
         pane = self.query_one("#sessions", SessionsPane)
         if pane.filters.profile != name:
             pane.set_profile(name)
+        for rp in self._resource_panes():
+            rp.set_profile(name)
 
     # ------------------------------------------------------------------ actions
 
     def action_pane(self, method: str) -> None:
         if isinstance(self.screen, ModalScreen):
             return
-        if self.query_one("#main", ContentSwitcher).current != "sessions":
+        current = self.query_one("#main", ContentSwitcher).current
+        if current != "sessions":
+            target = self.query_one(f"#{current}")
+            if method == "do_tag" and hasattr(target, "do_tag"):
+                target.do_tag()
+                return
             self.notify("That key applies to the Sessions section.", timeout=2)
             return
         getattr(self.query_one("#sessions", SessionsPane), method)()

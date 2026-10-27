@@ -4,7 +4,7 @@ Local manager for multiple Claude Code profiles on one macOS machine. Python 3.1
 
 ## Rules
 
-1. Read-only by default. Any write under a `~/.claude*` directory goes through `themis/sessions/actions.py` or `themis/resources/settings.py` write functions only. Each requires an explicit confirmation token, makes a backup where the file is edited, and appends to `~/.themis/audit.log`.
+1. Read-only by default. Any write under a `~/.claude*` directory goes through `themis/sessions/actions.py`, `themis/resources/settings.py` or `themis/resources/symlinks.py` write functions only. Each requires an explicit confirmation token, makes a backup where the file is edited, and appends to `~/.themis/audit.log`.
 2. Never read, store or display credentials: `.credentials.json`, keychain entries, env values and tokens inside MCP config or settings. Redact in `redact.py` at the reader layer so the UI cannot show them.
 3. Never modify transcript files.
 4. No network calls at runtime, except the user-triggered MCP health check through the `claude` CLI. Network is allowed during development to read the ARD spec and ADR.
@@ -24,7 +24,10 @@ uv run themis profiles       # list discovered profiles
 uv run themis sessions       # list sessions (--profile X --sort tokens|recent|context --json)
 uv run themis session <id>   # one session in detail (id prefix ok)
 uv run themis scan --rebuild # rebuild the summary cache
-uv run themis                # terminal UI (Sessions is functional; other sections are placeholders)
+uv run themis resources [kind] [--profile X --json]  # skills, commands, agents, hooks, mcp, plugins
+uv run themis doctor         # read-only health checks
+uv run themis registry manifest|search "q"|inspect <urn>  # urn:air: registry
+uv run themis                # terminal UI (Sessions, resource sections, Compare and Doctor work; Insights is a placeholder)
 uv run themis web [--port N] # same UI in the browser, 127.0.0.1 only, default port 8765
 uv run pytest                # tests (synthetic fixtures only)
 uv run ruff check . && uv run ruff format --check .

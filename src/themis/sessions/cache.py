@@ -7,6 +7,7 @@ count, bytes and newest mtime of all related files) and the schema version are u
 from __future__ import annotations
 
 import os
+import threading
 from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
@@ -54,7 +55,7 @@ def _write(summary: SessionSummary, sig: list[int]) -> None:
     path = _cache_file(summary.profile, summary.session_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = orjson.dumps({"schema": SCHEMA_VERSION, "sig": sig, "summary": summary.model_dump(mode="json")})
-    tmp = path.with_suffix(f".tmp{os.getpid()}")
+    tmp = path.with_suffix(f".tmp{os.getpid()}-{threading.get_ident()}")
     tmp.write_bytes(payload)
     os.replace(tmp, path)
 

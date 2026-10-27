@@ -87,3 +87,13 @@ def test_process_pool_path(tree, monkeypatch) -> None:
     monkeypatch.setattr(cache_mod, "POOL_THRESHOLD", 1)
     got = load_sessions(discover_profiles(), rebuild=True)
     assert len(got) == 3
+
+
+def test_concurrent_loads_do_not_collide_on_temp_files(tree: dict[str, Path]) -> None:
+    """The Sessions pane and the resource loader scan in parallel threads of one process."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    profiles = discover_profiles()
+    with ThreadPoolExecutor(4) as pool:
+        results = list(pool.map(lambda _: len(load_sessions(profiles, rebuild=True)), range(8)))
+    assert results == [3] * 8

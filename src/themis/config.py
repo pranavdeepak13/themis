@@ -39,6 +39,10 @@ class Config(BaseModel):
     resume_launcher: str | None = None
     # Sessions this many days (or fewer) from being purged are flagged.
     retention_warn_days: int = 7
+    # Canonical directory for shared skills, commands and agents. None = detect from existing symlinks.
+    shared_dir: str | None = None
+    # Transcripts at or above this size are flagged by the doctor.
+    large_transcript_mb: int = 100
 
 
 def load_config() -> Config:
@@ -55,6 +59,11 @@ def load_config() -> Config:
     warn = raw.get("retention_warn_days")
     if isinstance(warn, int) and warn >= 0:
         cfg.retention_warn_days = warn
+    shared = raw.get("shared_dir")
+    cfg.shared_dir = shared if isinstance(shared, str) and shared.strip() else None
+    big = raw.get("large_transcript_mb")
+    if isinstance(big, int) and big > 0:
+        cfg.large_transcript_mb = big
     cfg.context_windows |= {str(k): int(v) for k, v in raw.get("context_windows", {}).items()}
     for fam, p in raw.get("prices", {}).items():
         try:

@@ -7,6 +7,7 @@ preserved so later phases can add resource tags to the same file.
 from __future__ import annotations
 
 import os
+import threading
 from collections.abc import Iterable
 from typing import Any
 
@@ -31,6 +32,8 @@ def load_meta() -> dict[str, Any]:
         raw = {}
     if not isinstance(raw.get("sessions"), dict):
         raw["sessions"] = {}
+    if not isinstance(raw.get("resources"), dict):
+        raw["resources"] = {}
     raw.setdefault("version", VERSION)
     return raw
 
@@ -38,7 +41,7 @@ def load_meta() -> dict[str, Any]:
 def _save(meta: dict[str, Any]) -> None:
     path = meta_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(f".tmp{os.getpid()}")
+    tmp = path.with_suffix(f".tmp{os.getpid()}-{threading.get_ident()}")
     tmp.write_bytes(orjson.dumps(meta, option=orjson.OPT_INDENT_2))
     os.replace(tmp, path)
 
@@ -113,3 +116,24 @@ def bulk_tag(items: Iterable[tuple[str, str]], add: Iterable[str] = (), remove: 
     _save(meta)
     audit.record("session.bulk_tag", sessions=[f"{p}/{s}" for p, s in items], add=add_l, remove=sorted(rem))
     return changed
+
+
+# ---- resource tags: keyed "<kind>/<name>", shared across profiles
+
+
+def resource_tags(meta: dict[str, Any], kind: str, name: str) -> list[str]:
+    entry = meta["resources"].get(f"{kind}/{name}")
+    tags = entry.get("tags") if isinstance(entry, dict) else None
+    return [t for t in tags if isinstance(t, str)] if isinstance(tags, list) else []
+
+
+def set_resource_tags(kind: str, name: str, tags: Iterable[str]) -> list[str]:
+    final = clean_tags(tags)
+    meta = load_meta()
+    if final:
+        meta["resources"][f"{kind}/{name}"] = {"tags": final}
+    else:
+        meta["resources"].pop(f"{kind}/{name}", None)
+    _save(meta)
+    audit.record("resource.tags", kind=kind, name=name, tags=final)
+    return final

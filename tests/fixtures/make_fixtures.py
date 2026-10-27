@@ -183,6 +183,99 @@ def build_other_session(project: Path) -> Path:
     return path
 
 
+def _skill(path: Path, name: str, desc: str, body: str = "Do the thing.\n", frontmatter: bool = True) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    head = f"---\nname: {name}\ndescription: {desc}\n---\n" if frontmatter else ""
+    (path / "SKILL.md").write_text(head + body)
+
+
+def build_resources(root: Path, alpha: Path, beta: Path) -> None:
+    """Skills (shared symlink, identical copy, drift, solo, bad frontmatter, broken link), commands, agents,
+    CLAUDE.md, settings with hooks and plugins, MCP servers with a fake secret, and one installed plugin."""
+    shared = root / ".claude-shared"
+    _skill(shared / "skills" / "shared-skill", "shared-skill", "A shared skill for tests")
+    (shared / "commands").mkdir(parents=True)
+    (shared / "commands" / "ship.md").write_text("---\ndescription: Ship it\n---\nShip.\n")
+    for prof in (alpha, beta):
+        (prof / "skills").mkdir(parents=True, exist_ok=True)
+        (prof / "skills" / "shared-skill").symlink_to(shared / "skills" / "shared-skill")
+        (prof / "commands").mkdir(parents=True, exist_ok=True)
+        (prof / "commands" / "ship.md").symlink_to(shared / "commands" / "ship.md")
+        _skill(prof / "skills" / "copy-skill", "copy-skill", "Identical in both profiles")
+    _skill(alpha / "skills" / "drift-skill", "drift-skill", "Version A", "Alpha body.\n")
+    _skill(beta / "skills" / "drift-skill", "drift-skill", "Version B", "Beta body.\n")
+    _skill(alpha / "skills" / "solo", "solo", "Only in alpha")
+    _skill(alpha / "skills" / "nofm", "nofm", "", frontmatter=False)
+    (alpha / "skills" / "ghost").symlink_to(root / "does-not-exist")
+    (alpha / "agents").mkdir(exist_ok=True)
+    (alpha / "agents" / "helper.md").write_text("---\nname: helper\ndescription: Helps\n---\nHelp.\n")
+    (alpha / "CLAUDE.md").write_text("# Rules\nBe brief.\n")
+
+    plugin = alpha / "plugins" / "cache" / "mk" / "demo" / "1.0.0"
+    _skill(plugin / "skills" / "cat" / "plug-skill", "plug-skill", "From a plugin")
+    (plugin / "commands").mkdir(parents=True)
+    (plugin / "commands" / "plug-cmd.md").write_text("Run it.\n")
+    (plugin / "hooks").mkdir()
+    (plugin / "hooks" / "hooks.json").write_bytes(
+        orjson.dumps(
+            {"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/nope.sh"}]}]}}
+        )
+    )
+    (plugin / ".mcp.json").write_bytes(orjson.dumps({"plug-mcp": {"command": "plug", "env": {"API_KEY": FAKE_KEY}}}))
+    (alpha / "plugins" / "installed_plugins.json").write_bytes(
+        orjson.dumps(
+            {
+                "version": 2,
+                "plugins": {
+                    "demo@mk": [{"scope": "user", "installPath": str(plugin), "version": "1.0.0"}],
+                    "lost@gone": [
+                        {"scope": "user", "installPath": str(alpha / "plugins/cache/gone/lost/1"), "version": "2"}
+                    ],
+                },
+            }
+        )
+    )
+    (alpha / "plugins" / "known_marketplaces.json").write_bytes(
+        orjson.dumps(
+            {"mk": {"source": {"source": "github", "repo": "o/mk"}, "installLocation": str(alpha), "lastUpdated": "x"}}
+        )
+    )
+    (alpha / "settings.json").write_bytes(
+        orjson.dumps(
+            {
+                "model": "sonnet",
+                "enabledPlugins": {"demo@mk": True, "lost@gone": True},
+                "permissions": {"allow": ["Bash(ls:*)"], "defaultMode": "plan"},
+                "env": {"SOME_TOKEN": FAKE_KEY},
+                "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "/nonexistent/hook.sh", "timeout": 5}]}]},
+            },
+            option=orjson.OPT_INDENT_2,
+        )
+        + b"\n"
+    )
+    (alpha / ".claude.json").write_bytes(
+        orjson.dumps(
+            {
+                "oauthAccount": {"emailAddress": "fake@example.com"},
+                "mcpServers": {
+                    "github": {
+                        "type": "stdio",
+                        "command": "gh-mcp",
+                        "args": ["--token", FAKE_KEY],
+                        "env": {"GITHUB_TOKEN": FAKE_KEY},
+                    },
+                    "docs": {
+                        "type": "http",
+                        "url": "https://example.invalid/mcp",
+                        "headers": {"Authorization": "Bearer " + FAKE_KEY},
+                    },
+                },
+            },
+            option=orjson.OPT_INDENT_2,
+        )
+    )
+
+
 def build_profile_tree(root: Path) -> dict[str, Path]:
     """Create <root>/.claude-alpha and <root>/.claude-beta; return name -> profile dir."""
     alpha, beta = root / ".claude-alpha", root / ".claude-beta"
@@ -193,4 +286,7 @@ def build_profile_tree(root: Path) -> dict[str, Path]:
     (alpha / "file-history" / SID_MAIN / "abc@v1").write_bytes(b"x" * 100)
     (alpha / "settings.json").write_bytes(b"{}")
     build_other_session(beta / "projects" / "-work-demo-app")
+    beta.mkdir(parents=True, exist_ok=True)
+    (beta / "settings.json").write_bytes(b"{}")
+    build_resources(root, alpha, beta)
     return {"alpha": alpha, "beta": beta}
