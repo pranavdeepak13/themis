@@ -398,8 +398,15 @@ def registry_manifest(
     """Write an ARD v0.91 manifest of every skill, agent, command, MCP server and plugin."""
     from themis import audit
     from themis.paths import themis_home
+    from themis.registry.validate import validate_manifest
 
-    body = orjson.dumps(_manifest(publisher), option=orjson.OPT_INDENT_2)
+    manifest = _manifest(publisher)
+    verdict = validate_manifest(manifest)
+    if not verdict.ok:  # a bug in Themis, not in the user's setup; say so and refuse to publish a bad manifest
+        for line in verdict.errors[:10]:
+            err.print(f"[red]invalid: {line}[/red]")
+        raise typer.Exit(1)
+    body = orjson.dumps(manifest, option=orjson.OPT_INDENT_2)
     if stdout:
         typer.echo(body.decode())
         return
@@ -408,6 +415,35 @@ def registry_manifest(
     path.write_bytes(body + b"\n")
     audit.record("registry.manifest", path=str(path))
     console.print(f"Wrote {path}")
+
+
+@registry_app.command("validate")
+def registry_validate(
+    file: Annotated[Path | None, typer.Argument(help="A manifest file; default: generate one now.")] = None,
+    publisher: Annotated[str, typer.Option()] = "themis.local",
+) -> None:
+    """Check a manifest against the ARD entry schema (vendored) and the conformance warnings."""
+    from themis.registry.validate import validate_manifest
+
+    if file:
+        try:
+            manifest = orjson.loads(file.read_bytes())
+        except (OSError, orjson.JSONDecodeError) as exc:
+            err.print(f"[red]Cannot read {file}: {exc.__class__.__name__}[/red]")
+            raise typer.Exit(2) from exc
+    else:
+        manifest = _manifest(publisher)
+    verdict = validate_manifest(manifest)
+    count = len(manifest.get("entries", [])) if isinstance(manifest, dict) else 0
+    for line in verdict.errors[:50]:
+        console.print(f"[red]error[/red]   {line}")
+    for line in verdict.warnings[:50]:
+        console.print(f"[yellow]warning[/yellow] {line}")
+    console.print(
+        f"{count} entries: {len(verdict.errors)} error(s), {len(verdict.warnings)} warning(s)"
+        + ("  [green]valid[/green]" if verdict.ok else "  [red]INVALID[/red]")
+    )
+    raise typer.Exit(0 if verdict.ok else 1)
 
 
 @registry_app.command("search")
@@ -432,7 +468,7 @@ def registry_search(
     for item in filter or []:
         term, _, value = item.partition("=")
         filt.setdefault(term, []).append(value)
-    for term, value in (("type", type), ("metadata.themis.profiles", profile), ("metadata.themis.scope", scope)):
+    for term, value in (("type", type), ("metadata.themis_profiles", profile), ("metadata.themis_scope", scope)):
         if value:
             filt.setdefault(term, []).append(value)
     from themis.paths import themis_home

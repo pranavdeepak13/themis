@@ -2,7 +2,8 @@
 
 Follows ARD v0.91 (https://agenticresourcediscovery.org/spec/): a document with an `entries` array;
 each entry has `identifier`, `displayName`, `type` (media type) and exactly one of `url` or `data`.
-Themis-specific facts (profiles, scope, hashes, token estimates, variants) go under `metadata`.
+Themis-specific facts (profiles, scope, hashes, token estimates, variants) go under `metadata` as flat scalar
+values, as the schema requires.
 Secrets never appear: MCP entries carry only redacted data.
 """
 
@@ -13,6 +14,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+from themis.registry.queries import representative_queries
 from themis.registry.urn import DEFAULT_PUBLISHER, KIND_OF, make_urn
 from themis.resources.model import Resource
 from themis.sessions.meta import resource_tags
@@ -45,28 +47,31 @@ def _locator(first: Resource) -> dict[str, Any]:
 def _entry(urn: str, members: list[Resource], tags: list[str]) -> dict[str, Any]:
     first = members[0]
     hashes = sorted({m.content_hash for m in members if m.content_hash})
+    description = next((m.description for m in members if m.description), None)
+    # ARD requires metadata values to be scalars (string, number, boolean or null), so lists are comma-joined
     meta: dict[str, Any] = {
-        "themis": {
-            "origin": first.origin,
-            "scope": first.scope,
-            "profiles": sorted({m.profile for m in members}),
-            "contentHash": hashes[0] if len(hashes) == 1 else None,
-            "tokensEstimate": {"startup": first.tokens_startup, "full": first.tokens_full},
-        }
+        "themis_origin": first.origin,
+        "themis_scope": first.scope,
+        "themis_profiles": ",".join(sorted({m.profile for m in members})),
+        "themis_content_hash": hashes[0] if len(hashes) == 1 else None,
+        "themis_tokens_startup": first.tokens_startup,
+        "themis_tokens_full": first.tokens_full,
+        "themis_queries": "heuristic",
     }
-    if len(hashes) > 1:  # drifted copies share one URN; list each variant
-        meta["themis"]["variants"] = [
-            {"profiles": sorted({m.profile for m in members if m.content_hash == h}), "contentHash": h} for h in hashes
-        ]
+    if len(hashes) > 1:  # drifted copies share one identifier; list each variant as hash=profiles
+        meta["themis_variants"] = ";".join(
+            f"{h}={','.join(sorted({m.profile for m in members if m.content_hash == h}))}" for h in hashes
+        )
     entry: dict[str, Any] = {
         "identifier": urn,
         "displayName": first.name,
         "type": MEDIA_TYPE[first.kind],
         **_locator(first),
+        "representativeQueries": representative_queries(first.name, description, first.kind),
         "metadata": meta,
     }
-    if desc := next((m.description for m in members if m.description), None):
-        entry["description"] = desc
+    if description:
+        entry["description"] = description
     if tags:
         entry["tags"] = tags
     if version := next((m.extra.get("version") for m in members if m.extra.get("version")), None):
@@ -93,6 +98,6 @@ def build_manifest(
             "spec": SPEC,
             "generatedAt": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
             "publisher": publisher,
-            "note": "representativeQueries (SHOULD, 2-5) are not generated; trustManifest is not set",
+            "note": "representativeQueries are heuristic (see themis_queries); no trust manifest is published",
         },
     }

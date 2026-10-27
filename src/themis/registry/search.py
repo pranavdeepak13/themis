@@ -29,7 +29,11 @@ def term_values(entry: dict[str, Any], term: str) -> list[str]:
         cur = cur.get(part) if isinstance(cur, dict) else None
     if cur is None:
         return []
-    return [str(x) for x in cur] if isinstance(cur, list) else [str(cur)]
+    if isinstance(cur, list):
+        return [str(x) for x in cur]
+    if isinstance(cur, str) and term.startswith("metadata.") and "," in cur:
+        return [part.strip() for part in cur.split(",")]  # metadata lists are stored comma-joined
+    return [str(cur)]
 
 
 def passes(entry: dict[str, Any], filt: dict[str, Any]) -> bool:

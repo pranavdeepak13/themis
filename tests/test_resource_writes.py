@@ -184,10 +184,9 @@ def test_manifest_is_ard_shaped_and_clean(tree: dict[str, Path]) -> None:
         assert {"identifier", "displayName", "type"} <= e.keys() and ("url" in e) != ("data" in e)
     skill = by_id["urn:air:themis.local:skill:user:shared-skill"]
     assert skill["type"] == "application/agent-skills+md" and skill["url"].startswith("file://")
-    assert skill["metadata"]["themis"]["profiles"] == ["alpha", "beta"]
-    assert skill["metadata"]["themis"]["scope"] == "global"
+    assert skill["metadata"]["themis_profiles"] == "alpha,beta" and skill["metadata"]["themis_scope"] == "global"
     drift = by_id["urn:air:themis.local:skill:user:drift-skill"]
-    assert len(drift["metadata"]["themis"]["variants"]) == 2
+    assert drift["metadata"]["themis_variants"].count(";") == 1 and drift["metadata"]["themis_content_hash"] is None
     mcp = by_id["urn:air:themis.local:mcp-server:user:github"]
     assert mcp["type"] == "application/mcp-server-card+json" and "data" in mcp
     assert FAKE_KEY not in orjson.dumps(m).decode()
@@ -202,8 +201,12 @@ def test_search_shape_filters_and_paging(tree: dict[str, Path]) -> None:
     assert top["score"] == 100 and isinstance(top["score"], int) and top["source"]
     assert search(m, "", {"publisher": "themis.local", "type": "application/mcp-server-card+json"})["results"]
     assert not search(m, "", {"publisher": "other.example"})["results"]  # AND across keys, publisher from URN
-    both = search(m, "", {"metadata.themis.profiles": ["alpha", "beta"]})["results"]  # OR within a key
+    both = search(m, "", {"metadata.themis_profiles": ["alpha", "beta"]})["results"]  # OR within a key
     assert both
+    assert {r["displayName"] for r in search(m, "", {"metadata.themis_profiles": "beta"})["results"]} >= {
+        "shared-skill"
+    }
+    assert not [r for r in search(m, "", {"metadata.themis_profiles": "beta"})["results"] if r["displayName"] == "solo"]
     assert not search(m, "shared nonexistentword")["results"]
     page1 = search(m, "", page_size=3)
     assert len(page1["results"]) == 3 and page1["pageToken"] == "3"

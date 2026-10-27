@@ -15,6 +15,7 @@ classifiers = [
 license = { text = "Apache-2.0" }
 requires-python = ">=3.12"
 dependencies = [
+    "jsonschema>=4.26.0",
     "orjson>=3.10",
     "pydantic>=2.7",
     "rich>=13.7",
