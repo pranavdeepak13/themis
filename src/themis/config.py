@@ -31,6 +31,20 @@ DEFAULT_WINDOWS: dict[str, int] = {"default": 200_000, "[1m]": 1_000_000}
 EXTENDED_WINDOW = 1_000_000
 
 
+class AdvisorConfig(BaseModel):
+    """Thresholds for the optimisation advisor. Override under [advisor] in config.toml."""
+
+    unused_days: int = 60  # skills and MCP servers unused for this long are flagged
+    claude_md_max_tokens: int = 2000  # estimated tokens above which a CLAUDE.md is "oversized"
+    skill_desc_max_chars: int = 500  # skill descriptions longer than this are flagged
+    description_overlap: float = 0.6  # word-set Jaccard above which two descriptions "overlap"
+    near_duplicate: float = 0.85  # same, for near-duplicate skills with different names
+    high_context_percent: float = 80.0
+    low_cache_hit_rate: float = 0.5
+    min_cache_tokens: int = 50_000  # ignore tiny sessions when judging the cache hit rate
+    startup_overhead_warn_tokens: int = 8_000
+
+
 class Config(BaseModel):
     aliases: dict[str, str] = Field(default_factory=dict)
     context_windows: dict[str, int] = Field(default_factory=lambda: dict(DEFAULT_WINDOWS))
@@ -43,6 +57,7 @@ class Config(BaseModel):
     shared_dir: str | None = None
     # Transcripts at or above this size are flagged by the doctor.
     large_transcript_mb: int = 100
+    advisor: AdvisorConfig = Field(default_factory=AdvisorConfig)
 
 
 def load_config() -> Config:
@@ -64,6 +79,14 @@ def load_config() -> Config:
     big = raw.get("large_transcript_mb")
     if isinstance(big, int) and big > 0:
         cfg.large_transcript_mb = big
+    adv = raw.get("advisor")
+    if isinstance(adv, dict):
+        for key, value in adv.items():
+            current = getattr(cfg.advisor, key, None)
+            if isinstance(current, bool) or current is None:
+                continue
+            if isinstance(value, int | float) and not isinstance(value, bool):
+                setattr(cfg.advisor, key, type(current)(value))
     cfg.context_windows |= {str(k): int(v) for k, v in raw.get("context_windows", {}).items()}
     for fam, p in raw.get("prices", {}).items():
         try:

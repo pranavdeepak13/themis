@@ -328,3 +328,67 @@ ResourcePane, SettingsPane, ComparePane, DoctorPane {
     width: 90%;
     max-width: 130;
 }
+
+/* ---- insights ---- */
+InsightsPane {
+    height: 1fr;
+    width: 1fr;
+}
+
+#i-controls, #i-dims {
+    height: auto;
+    padding: 0 1;
+}
+
+.i-label {
+    width: auto;
+    padding: 0 1 0 0;
+    color: $text-muted;
+}
+
+.i-btn {
+    margin-right: 1;
+}
+
+#i-status, #i-advice-note {
+    height: auto;
+    padding: 0 1;
+    color: $text-muted;
+}
+
+#i-tabs {
+    height: 1fr;
+}
+
+#i-spark {
+    height: 4;
+    margin: 0 1;
+}
+
+#i-summary, #i-chart, #i-context, #i-top, #i-usage {
+    padding: 0 1;
+}
+
+#i-advice-body {
+    height: 1fr;
+}
+
+#i-advice-body > DataTable {
+    width: 3fr;
+    height: 1fr;
+}
+
+#i-advice-detail {
+    width: 2fr;
+    height: 1fr;
+    border-left: tall $primary 30%;
+    padding: 0 1;
+}
+
+#i-advice-actions {
+    height: auto;
+}
+
+#i-advice-actions Button {
+    margin-right: 1;
+}

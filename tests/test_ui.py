@@ -24,6 +24,17 @@ async def until(pilot: Pilot, cond: Callable[[], bool], timeout: float = 8.0) ->
         await pilot.pause(0.05)
 
 
+async def screen_is(pilot: Pilot, app: ThemisApp, cls: type) -> None:
+    """Wait until the given screen class is on top (a fixed pause is not enough on a loaded machine)."""
+    await until(pilot, lambda: isinstance(app.screen, cls))
+
+
+async def click_ready(pilot: Pilot, app: ThemisApp, selector: str) -> None:
+    """Click only after the widget has been laid out; an early click can land on the header's palette icon."""
+    await until(pilot, lambda: bool(app.screen.query(selector)) and app.screen.query_one(selector).region.height > 0)
+    await pilot.click(selector)
+
+
 def run_app(scenario: Callable[[ThemisApp, Pilot, SessionsPane], Awaitable[None]]) -> None:
     async def go() -> None:
         app = ThemisApp()
@@ -114,7 +125,7 @@ def test_resume_shows_exact_command(tree: dict[str, Path]) -> None:
         pane.reveal(f"alpha/{SID_MAIN}")
         await pilot.press("r")
         await pilot.pause()
-        assert isinstance(app.screen, ResumeModal)
+        await screen_is(pilot, app, ResumeModal)
         shown = str(app.screen.query_one("#resume-command", Static).content)
         assert shown == f"cd /work/demo-app && CLAUDE_CONFIG_DIR={tree['alpha']} claude --resume {SID_MAIN}"
         await pilot.press("escape")
@@ -127,7 +138,7 @@ def test_delete_flow_is_blocked_for_recent_then_needs_typed_token(tree: dict[str
         pane.reveal(f"alpha/{SID_MAIN}")
         await pilot.press("d")
         await pilot.pause()
-        assert isinstance(app.screen, ConfirmModal)
+        await screen_is(pilot, app, ConfirmModal)
         assert app.screen.query_one("#ok", Button).disabled  # files were just written: refused
         await pilot.press("escape")
         await pilot.pause()
@@ -136,8 +147,8 @@ def test_delete_flow_is_blocked_for_recent_then_needs_typed_token(tree: dict[str
         age_files(tree["alpha"])
         await pilot.press("d")
         await pilot.pause()
+        await screen_is(pilot, app, ConfirmModal)
         modal = app.screen
-        assert isinstance(modal, ConfirmModal)
         ok = modal.query_one("#ok", Button)
         assert ok.disabled
         modal.query_one("#dialog-token", Input).value = "wrong"
@@ -146,7 +157,7 @@ def test_delete_flow_is_blocked_for_recent_then_needs_typed_token(tree: dict[str
         modal.query_one("#dialog-token", Input).value = SID_MAIN[:8]
         await pilot.pause()
         assert not ok.disabled
-        await pilot.click("#ok")
+        await click_ready(pilot, app, "#ok")
         await until(pilot, lambda: len(pane.all_rows) == 2 and pane.loaded)
         assert not (tree["alpha"] / "projects/-work-demo-app" / f"{SID_MAIN}.jsonl").exists()
 
@@ -161,7 +172,7 @@ def test_mark_tag_and_bulk_bar(tree: dict[str, Path]) -> None:
         assert len(pane.marked) == 2 and not app.query_one("#bulk").has_class("hidden")
         await pilot.press("t")
         await pilot.pause()
-        assert isinstance(app.screen, TextPromptModal)
+        await screen_is(pilot, app, TextPromptModal)
         app.screen.query_one(Input).value = "review, urgent"
         await pilot.press("enter")
         await pilot.pause()
@@ -202,11 +213,10 @@ def test_retention_banner_and_archive_all_at_risk(tree: dict[str, Path]) -> None
         assert len(pane.at_risk_rows) == 2  # both alpha sessions; beta's files are fresh
         assert not app.query_one("#banner").has_class("hidden")
         assert "2 session(s)" in str(app.query_one("#banner-text", Static).content)
-        await pilot.click("#btn-archive-risk")
+        await click_ready(pilot, app, "#btn-archive-risk")
         await pilot.pause()
-        modal = app.screen
-        assert isinstance(modal, ConfirmModal)
-        await pilot.click("#ok")
+        await screen_is(pilot, app, ConfirmModal)
+        await click_ready(pilot, app, "#ok")
         archive_dir = P(os.environ["THEMIS_HOME"]) / "archive" / "alpha"
         await until(pilot, lambda: len(list(archive_dir.glob("*.tar.gz"))) == 2)
         assert (tree["alpha"] / "projects/-work-demo-app" / f"{SID_MAIN}.jsonl").exists()  # originals stay

@@ -81,3 +81,11 @@ Locations per profile directory `<P>`. Names and shapes only.
 - **`claude mcp list` output:** a header line, then `<name>: <command or url> - <glyph> <status>` per server, status text `Connected`, `Needs authentication` or a failure message. Server names can contain `:` and spaces (`claude.ai Docs`, `plugin:mempalace:mempalace`).
 - **Settings layers:** `<P>/settings.json` (user), optional `<P>/remote-settings.json` (managed, with `.signature.json` and `.synced-at` siblings), project `.claude/settings.json` and `settings.local.json`. Backup copies such as `settings.json.bak-*` sit next to the real file and are ignored.
 - **`skillOverrides`** in settings maps skill name to `"off"`.
+
+## Found in Phase 4 (2026-10-27)
+
+- **`skillOverrides` keys are not always the bare skill name.** App-synced skills (`skills/synced/...`) are keyed `anthropic-skills:<name>` (53 such keys in one profile, all `"off"`). The scanner checks the bare name, `anthropic-skills:<name>` for synced skills, and `<plugin>:<name>` for plugin skills. Values seen: `"off"`; the schema also allows `"on"`, `"name-only"`, `"user-invocable-only"`.
+- **Skill listing budget.** The settings schema has `skillListingMaxDescChars` (default 1536 per skill) and `skillListingBudgetFraction` (default 0.01 of the window): Claude Code shortens descriptions to fit, so the summed startup-token estimate is an upper bound.
+- **`promptCacheTtl`** (`5m` or `1h`) exists; unset means automatic (1 hour on a subscription within limits). This weakens any "5-minute cache expired" explanation for low cache hit rates, so the advisor states that pattern only as a possibility.
+- **Subscription numbers:** the real data's cache hit rate is about 97% overall; only two sessions across all profiles fall under 50%.
+- **Sizes:** about 330 MB of transcripts across the four profiles at this date (the 5 GB figure in the plan is an upper design target).

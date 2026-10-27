@@ -13,6 +13,7 @@ from textual.widgets import ContentSwitcher, Footer, Header, OptionList, Tab, Ta
 from textual.widgets.option_list import Option
 
 from themis.resources.store import ResourceData, load_all
+from themis.ui.screens.insights import InsightsPane
 from themis.ui.screens.placeholder import PlaceholderPane
 from themis.ui.screens.resources import ComparePane, DoctorPane, LoadingMixin, ResourcePane, SettingsPane
 from themis.ui.screens.sessions import SessionsPane
@@ -29,7 +30,7 @@ SECTIONS: list[tuple[str, str, str, str]] = [  # id, label, phase, blurb
     ("settings", "Settings", "", ""),
     ("compare", "Compare", "", ""),
     ("doctor", "Doctor", "", ""),
-    ("insights", "Insights", "Phase 4", "Token dashboards and the optimisation advisor."),
+    ("insights", "Insights", "", ""),
 ]
 RESOURCE_KINDS: dict[str, tuple[str, ...]] = {
     "skills": ("skill",),
@@ -68,7 +69,12 @@ class ThemisApp(App[None]):
         Binding("ctrl+a", "pane('action_mark_all')", "Mark all", show=False),
         Binding("ctrl+r", "rebuild", "Rebuild cache", show=False),
         Binding("escape", "pane('action_escape')", "Back", show=False),
-        *[Binding(str(i), f"section('{sid}')", label, show=False) for i, (sid, label, *_) in enumerate(SECTIONS, 1)],
+        *[
+            Binding(str(i), f"section('{sid}')", label, show=False)
+            for i, (sid, label, *_) in enumerate(SECTIONS[:9], 1)
+        ],
+        Binding("0", "section('doctor')", "Doctor", show=False),
+        Binding("i", "section('insights')", "Insights", show=False),
     ]
 
     def __init__(self) -> None:
@@ -92,6 +98,8 @@ class ThemisApp(App[None]):
                         yield ComparePane(id=sid)
                     elif sid == "doctor":
                         yield DoctorPane(id=sid)
+                    elif sid == "insights":
+                        yield InsightsPane(id=sid)
                     else:
                         yield PlaceholderPane(label, phase, blurb, id=sid)
         yield Footer()
@@ -104,7 +112,7 @@ class ThemisApp(App[None]):
     # ------------------------------------------------------------------ resource data
 
     def _resource_panes(self) -> list[LoadingMixin]:
-        return list(self.query("ResourcePane, SettingsPane, ComparePane, DoctorPane"))  # type: ignore[arg-type]
+        return list(self.query("ResourcePane, SettingsPane, ComparePane, DoctorPane, InsightsPane"))  # type: ignore[arg-type]
 
     @work(thread=True, exclusive=True, group="resources")
     def _load_resources(self) -> None:

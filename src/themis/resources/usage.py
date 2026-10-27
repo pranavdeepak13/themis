@@ -16,6 +16,7 @@ class UsageStat:
     sessions: int = 0
     last_used: str | None = None  # end of the latest session that used it (transcript timestamps)
     per_profile: dict[str, int] = field(default_factory=dict)
+    last_by_profile: dict[str, str] = field(default_factory=dict)
 
     def merge(self, other: UsageStat) -> None:
         self.invocations += other.invocations
@@ -23,6 +24,8 @@ class UsageStat:
         self.last_used = max(filter(None, [self.last_used, other.last_used]), default=None)
         for p, n in other.per_profile.items():
             self.per_profile[p] = self.per_profile.get(p, 0) + n
+        for p, when in other.last_by_profile.items():
+            self.last_by_profile[p] = max(when, self.last_by_profile.get(p, ""))
 
 
 class UsageIndex:
@@ -44,6 +47,8 @@ class UsageIndex:
                     st.sessions += 1
                     st.per_profile[s.profile] = st.per_profile.get(s.profile, 0) + n
                     st.last_used = max(filter(None, [st.last_used, when]), default=None)
+                    if when:
+                        st.last_by_profile[s.profile] = max(when, st.last_by_profile.get(s.profile, ""))
 
     @staticmethod
     def _matches(kind: str, seen: str, name: str) -> bool:
@@ -61,7 +66,16 @@ class UsageIndex:
                     total.merge(st)
                 elif profile in st.per_profile:
                     # sessions are not tracked per profile in the shared stat; approximate with 1 per hit profile
-                    total.merge(UsageStat(st.per_profile[profile], 0, st.last_used, {profile: st.per_profile[profile]}))
+                    last = st.last_by_profile.get(profile)
+                    total.merge(
+                        UsageStat(
+                            st.per_profile[profile],
+                            0,
+                            last,
+                            {profile: st.per_profile[profile]},
+                            {profile: last} if last else {},
+                        )
+                    )
         return total
 
     def of(self, r: Resource) -> UsageStat:

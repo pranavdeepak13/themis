@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from themis.config import Config, load_config
-from themis.profiles.discover import discover_profiles
+from themis.profiles.discover import discover_profiles, usable
 from themis.profiles.model import Profile
 from themis.resources.doctor import Finding, run_doctor
 from themis.resources.model import Inventory
@@ -26,12 +26,17 @@ class ResourceData:
     usage: UsageIndex
     meta: dict[str, Any]
     findings: list[Finding]
+    unavailable: list[Profile] = field(default_factory=list)  # profiles skipped: gone or unreadable
 
 
 def load_all(progress: Progress | None = None, rebuild: bool = False) -> ResourceData:
     cfg = load_config()
-    profiles = discover_profiles(cfg)
+    profiles, bad = usable(discover_profiles(cfg))
     sessions = load_sessions(profiles, rebuild=rebuild, progress=progress)
     inv = scan_inventory(profiles, project_dirs_by_profile(sessions))
     findings = run_doctor(inv, profiles, sessions, cfg.large_transcript_mb * 1024 * 1024)
-    return ResourceData(cfg, profiles, sessions, inv, UsageIndex(sessions), load_meta(), findings)
+    findings = [
+        Finding("error", "profile-unavailable", f"profile {p.name}: {p.problem}; skipped", p.name, str(p.path))
+        for p in bad
+    ] + findings
+    return ResourceData(cfg, profiles, sessions, inv, UsageIndex(sessions), load_meta(), findings, bad)

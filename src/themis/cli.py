@@ -75,13 +75,34 @@ def _row_dict(s: SessionSummary, cfg: Config) -> dict:
     return d
 
 
+def _version_flag(value: bool) -> None:
+    if value:
+        from themis import __version__
+
+        typer.echo(f"themis {__version__}")
+        raise typer.Exit()
+
+
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context) -> None:
+def main(
+    ctx: typer.Context,
+    version: Annotated[
+        bool | None, typer.Option("--version", callback=_version_flag, is_eager=True, help="Show the version.")
+    ] = None,
+) -> None:
     """Open the terminal UI when no command is given."""
     if ctx.invoked_subcommand is None:
         from themis.ui.app import run
 
         run()
+
+
+@app.command()
+def version() -> None:
+    """Show the Themis version."""
+    from themis import __version__
+
+    typer.echo(f"themis {__version__}")
 
 
 @app.command()
@@ -273,6 +294,80 @@ def doctor(profile: Annotated[str | None, typer.Option("--profile", "-p")] = Non
     for f in findings:
         console.print(f"[{colour[f.severity]}]{f.severity:7}[/] {f.profile or '-':10} {f.code}: {f.message}")
     console.print(f"{len(findings)} finding(s)" if findings else "[green]No findings.[/green]")
+
+
+@app.command()
+def advise(
+    profile: Annotated[str | None, typer.Option("--profile", "-p")] = None,
+    fmt: Annotated[str, typer.Option("--format", "-f", help="md or json")] = "md",
+    prompts: Annotated[
+        bool, typer.Option("--prompts", help="Include the Claude Code prompt for each finding.")
+    ] = False,
+) -> None:
+    """Advisory findings on token waste, each with evidence and a ready-to-paste Claude Code prompt. Never edits."""
+    from themis.advisor.rules import run_advisor
+    from themis.redact import redact_secrets
+    from themis.resources.store import load_all
+
+    if fmt not in ("md", "json"):
+        err.print("[red]--format must be md or json[/red]")
+        raise typer.Exit(2)
+    data = load_all()
+    if profile and profile not in {p.name for p in data.profiles}:
+        err.print(f"[red]No profile named {profile!r}[/red]")
+        raise typer.Exit(2)
+    found = run_advisor(data, profile=profile)
+    if fmt == "json":
+        keep = None if prompts else {"prompt"}
+        payload = [{"id": a.id, **a.model_dump(exclude=keep)} for a in found]
+        typer.echo(redact_secrets(orjson.dumps(payload, option=orjson.OPT_INDENT_2).decode()))
+        return
+    lines = [f"# Themis advisor ({len(found)} finding(s))", "", "Advisory only: Themis never edits anything.", ""]
+    for a in found:
+        saved = f" Saves ~{a.tokens_per_session} tokens/session" if a.tokens_per_session else ""
+        saved += f", ~{a.tokens_per_month}/month." if a.tokens_per_month else ("." if saved else "")
+        lines += [
+            f"## [{a.severity}] {a.title}",
+            f"`{a.id}` rule {a.rule}, confidence {a.confidence}.{saved}",
+            "",
+            a.summary,
+            "",
+            *[f"- {e}" for e in a.evidence[:10]],
+            "",
+        ]
+        if prompts:
+            lines += ["```text", a.prompt, "```", ""]
+    typer.echo(redact_secrets("\n".join(lines)))
+
+
+@app.command()
+def report(
+    profile: Annotated[str | None, typer.Option("--profile", "-p")] = None,
+    since: Annotated[str | None, typer.Option("--since", help="30d, 4w, 3m or a date")] = "30d",
+    fmt: Annotated[str, typer.Option("--format", "-f", help="md or html")] = "md",
+    out: Annotated[Path | None, typer.Option("--out", "-o", help="Default: ~/.themis/reports/")] = None,
+    stdout: Annotated[bool, typer.Option("--stdout")] = False,
+) -> None:
+    """Usage, top sessions, skill usage, advisor and doctor findings. Redacted; no transcript content."""
+    from themis.reports.build import build_report, render, write_report
+    from themis.resources.store import load_all
+
+    if fmt not in ("md", "html"):
+        err.print("[red]--format must be md or html[/red]")
+        raise typer.Exit(2)
+    data = load_all()
+    if profile and profile not in {p.name for p in data.profiles}:
+        err.print(f"[red]No profile named {profile!r}[/red]")
+        raise typer.Exit(2)
+    try:
+        rep = build_report(data, profile, since)
+    except ValueError as exc:
+        err.print(f"[red]{exc}[/red]")
+        raise typer.Exit(2) from exc
+    if stdout:
+        typer.echo(render(rep, fmt))
+        return
+    console.print(f"Wrote {write_report(rep, fmt, str(out) if out else None)}")
 
 
 registry_app = typer.Typer(help="ARD-style local resource registry.", add_completion=False)

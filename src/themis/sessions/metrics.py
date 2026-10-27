@@ -47,6 +47,12 @@ def tokens_cost(t: Tokens, price: Price) -> float:
     ) / 1_000_000
 
 
+def model_cost(model: str, tok: Tokens, cfg: Config) -> float | None:
+    """API-equivalent USD for one model's tokens, or None when the model has no price."""
+    price = _family_price(model, cfg)
+    return None if price is None else tokens_cost(tok, price)
+
+
 def estimate_cost(s: SessionSummary, cfg: Config) -> tuple[float, bool]:
     """API-equivalent USD estimate and whether any model had no price (incomplete)."""
     total, incomplete = 0.0, False

@@ -29,11 +29,17 @@ _SENSITIVE_KEY = re.compile(r"(?i)token|secret|password|passwd|api[_-]?key|apike
 _ALWAYS_REDACT_KEYS = {"env", "headers", "headershelper", "oauth"}
 
 
-def redact_text(text: str) -> str:
+def redact_secrets(text: str) -> str:
+    """Known secret shapes only (keys, tokens, bearer strings, URL credentials). Safe for whole documents such
+    as reports, where prose like "Tokens: 2.1B" must survive."""
     for pat in _PATTERNS:
         text = pat.sub(MASK, text)
-    text = _URL_CREDS.sub(MASK, text)
-    return _ASSIGN.sub(lambda m: m.group(1) + MASK, text)
+    return _URL_CREDS.sub(MASK, text)
+
+
+def redact_text(text: str) -> str:
+    """redact_secrets plus the NAME=value heuristic for names that look secret. Stricter, for free text."""
+    return _ASSIGN.sub(lambda m: m.group(1) + MASK, redact_secrets(text))
 
 
 def redact_obj(obj: Any) -> Any:

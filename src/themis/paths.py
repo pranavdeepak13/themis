@@ -34,3 +34,7 @@ def archive_dir() -> Path:
 
 def exports_dir() -> Path:
     return themis_home() / "exports"
+
+
+def reports_dir() -> Path:
+    return themis_home() / "reports"

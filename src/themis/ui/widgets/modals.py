@@ -211,7 +211,21 @@ class ArchivesModal(ModalScreen[ArchiveEntry | None]):
 
 
 HELP_KEYS = [
+    ("Everywhere", ""),
+    (
+        "1 to 9, 0, i",
+        "1 Sessions 2 Skills 3 Agents 4 Commands 5 Plugins 6 MCP 7 Hooks 8 Settings 9 Compare 0 Doctor i Insights",
+    ),
+    (
+        "Left / Right",
+        "Switch the profile filter when the profile bar has focus (it filters every section except Compare)",
+    ),
+    ("Tab / Shift+Tab", "Move focus; Enter or a click activates a button or row"),
+    ("t", "Tag the selected session (Sessions) or resource (Skills, Agents, Commands, Plugins, MCP, Hooks)"),
+    ("Ctrl+R", "Rescan everything (sessions cache rebuild)"),
+    ("?", "This help"),
     ("q", "Quit"),
+    ("Sessions", ""),
     ("/", "Full-text search across sessions (Esc cancels)"),
     ("Space", "Mark or unmark the session under the cursor (bulk select)"),
     ("Ctrl+A / u", "Mark all shown / clear marks"),
@@ -219,15 +233,24 @@ HELP_KEYS = [
     ("d", "Delete (permanent, typed confirmation); acts on marked sessions if any"),
     ("a", "Archive to ~/.themis/archive; acts on marked sessions if any"),
     ("v", "Browse archives and restore"),
-    ("t", "Tag; acts on marked sessions if any (prefix a tag with - to remove it)"),
     ("n", "Rename (stored in Themis, never in the transcript)"),
     ("e", "Export to redacted markdown"),
     ("c / m", "Copy / move the session to another profile"),
     ("s", "Cycle the sort column; click a column header to sort by it"),
-    ("R", "Rebuild the cache and reload"),
-    ("1 to 7", "Switch section"),
-    ("Left / Right", "Switch profile filter when the profile bar has focus"),
-    ("?", "This help"),
+    ("Resources", ""),
+    (
+        "Buttons",
+        "Promote (symlink to the shared copy), enable or disable a plugin or MCP server, health check, edit settings",
+    ),
+    ("Insights", ""),
+    (
+        "Buttons",
+        "Window (7d to all), grouping (profile, project, model, day, week, month), copy prompt, export",
+    ),
+    (
+        "Writes",
+        "Every write shows a diff or file list, needs confirmation, is backed up where a file is edited, audited",
+    ),
 ]
 
 
@@ -237,7 +260,10 @@ class HelpModal(ModalScreen[None]):
     def compose(self) -> ComposeResult:
         table = Table.grid(padding=(0, 2))
         for key, text in HELP_KEYS:
-            table.add_row(f"[b]{key}[/b]", text)
+            if text:
+                table.add_row(f"[b]{key}[/b]", text)
+            else:
+                table.add_row(f"\n[b]{key}[/b]", "")
         with Vertical(id="dialog"):
             yield Label("Keyboard shortcuts", id="dialog-title")
             with VerticalScroll(id="dialog-body"):

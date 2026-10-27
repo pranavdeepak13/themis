@@ -26,8 +26,12 @@ uv run themis session <id>   # one session in detail (id prefix ok)
 uv run themis scan --rebuild # rebuild the summary cache
 uv run themis resources [kind] [--profile X --json]  # skills, commands, agents, hooks, mcp, plugins
 uv run themis doctor         # read-only health checks
+uv run themis advise [--profile X --format md|json --prompts]  # advisory findings, never edits
+uv run themis report [--profile X --since 30d --format md|html]  # redacted report, no transcript content
+uv run themis version
+uv run python scripts/smoke_real_copy.py  # write paths on a redacted temp copy of the real config
 uv run themis registry manifest|search "q" [-f term=value]|inspect <urn>  # ARD v0.91 registry
-uv run themis                # terminal UI (Sessions, resource sections, Compare and Doctor work; Insights is a placeholder)
+uv run themis                # terminal UI (Sessions, resources, Compare, Doctor and Insights)
 uv run themis web [--port N] # same UI in the browser, 127.0.0.1 only, default port 8765
 uv run pytest                # tests (synthetic fixtures only)
 uv run ruff check . && uv run ruff format --check .

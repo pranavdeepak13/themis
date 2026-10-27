@@ -12,7 +12,7 @@ from textual.worker import get_current_worker
 
 from themis.config import Config, load_config
 from themis.format import human, human_bytes, when_short
-from themis.profiles.discover import discover_profiles
+from themis.profiles.discover import discover_profiles, usable
 from themis.profiles.model import Profile
 from themis.sessions import search
 from themis.sessions.cache import load_sessions
@@ -136,7 +136,9 @@ class SessionsPane(SessionActions):
         call = self.app.call_from_thread
         try:
             cfg = load_config()
-            profiles = discover_profiles(cfg)
+            profiles, bad = usable(discover_profiles(cfg))
+            for p in bad:
+                call(self.app.notify, f"Skipping profile {p.name}: {p.problem}.", severity="warning", timeout=8)
             sessions = load_sessions(profiles, rebuild=rebuild, progress=lambda d, t: call(self._on_progress, d, t))
             meta = load_meta()
             risky, policy = find_at_risk(profiles, sessions, cfg.retention_warn_days)

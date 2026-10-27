@@ -11,6 +11,7 @@ class Profile(BaseModel):
     name: str
     path: Path
     alias: str | None = None
+    problem: str | None = None  # why the directory cannot be scanned right now, if it cannot
 
     @property
     def display(self) -> str:

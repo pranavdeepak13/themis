@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from collections.abc import Iterable
 from pathlib import Path
+from typing import Any
 
 from themis.profiles.model import Profile
 from themis.resources import claude_md, hooks, mcp, plugins
@@ -24,6 +25,16 @@ def project_dirs_by_profile(sessions: Iterable[SessionSummary]) -> dict[str, lis
         if s.cwd and os.path.isdir(s.cwd):
             out.setdefault(s.profile, {})[s.cwd] = Path(s.cwd)
     return {p: sorted(d.values()) for p, d in out.items()}
+
+
+def _override_off(r: Resource, overrides: dict[str, Any]) -> bool:
+    """skillOverrides keys: the bare name, `anthropic-skills:<name>` for app-synced skills, `<plugin>:<name>`."""
+    keys = [r.name]
+    if r.origin == "synced":
+        keys.append(f"anthropic-skills:{r.name}")
+    if r.origin == "plugin" and r.origin_name:
+        keys.append(f"{r.origin_name.partition('@')[0]}:{r.name}")
+    return any(overrides.get(k) == "off" for k in keys)
 
 
 def _plugin_contents(res: Resource, profile: str) -> tuple[list[Resource], int]:
@@ -72,44 +83,52 @@ def scan_inventory(
     projects = projects or {}
     profile_paths = {os.path.realpath(p.path) for p in profiles}
     for p in profiles:
-        d, name = p.path, p.name
-        settings, err = read_json(d / "settings.json")
-        if err:
-            inv.errors.append(f"{d / 'settings.json'}: {err}")
-        settings = settings if isinstance(settings, dict) else {}
-        overrides = settings.get("skillOverrides") if isinstance(settings.get("skillOverrides"), dict) else {}
-
-        local = [
-            *scan_skills(d / "skills", name),
-            *scan_markdown(d / "commands", "command", name),
-            *scan_markdown(d / "agents", "agent", name),
-            *claude_md.scan_user_claude_md(d, name),
-            *hooks.scan_settings_hooks(d / "settings.json", name, "user"),
-            *scan_permissions(settings, name, str(d / "settings.json")),
-        ]
-        for r in local:
-            if r.kind == "skill" and overrides.get(r.name) == "off":
-                r.enabled = False
-        inv.resources += local
-
-        markets, errs = plugins.scan_marketplaces(d, name, settings)
-        inv.errors += errs
-        plugs, errs = plugins.scan_plugins(d, name, settings, markets)
-        inv.errors += errs
-        for pl in plugs:
-            if pl.extra.get("install_exists"):
-                contents, skill_tokens = _plugin_contents(pl, name)
-                pl.extra["skills"] = sum(1 for c in contents if c.kind == "skill")
-                pl.extra["skill_tokens"] = skill_tokens
-                inv.resources += contents
-        inv.resources += [*markets, *plugs]
-
-        mcps, err = mcp.scan_claude_json(d, name, projects.get(name, []))
-        if err:
-            inv.errors.append(err)
-        inv.resources += mcps
-        for project in projects.get(name, []):
-            inv.resources += _project_resources(project, name, profile_paths)
+        try:
+            _scan_profile(inv, p, projects, profile_paths)
+        except OSError as exc:  # the directory vanished or became unreadable mid-scan
+            inv.errors.append(f"{p.path}: scan interrupted ({exc.__class__.__name__})")
     if classify_scopes:
         classify(inv.resources, len(profiles))
     return inv
+
+
+def _scan_profile(inv: Inventory, p: Profile, projects: dict[str, list[Path]], profile_paths: set[str]) -> None:
+    d, name = p.path, p.name
+    settings, err = read_json(d / "settings.json")
+    if err:
+        inv.errors.append(f"{d / 'settings.json'}: {err}")
+    settings = settings if isinstance(settings, dict) else {}
+    overrides = settings.get("skillOverrides") if isinstance(settings.get("skillOverrides"), dict) else {}
+
+    local = [
+        *scan_skills(d / "skills", name),
+        *scan_markdown(d / "commands", "command", name),
+        *scan_markdown(d / "agents", "agent", name),
+        *claude_md.scan_user_claude_md(d, name),
+        *hooks.scan_settings_hooks(d / "settings.json", name, "user"),
+        *scan_permissions(settings, name, str(d / "settings.json")),
+    ]
+    inv.resources += local
+
+    markets, errs = plugins.scan_marketplaces(d, name, settings)
+    inv.errors += errs
+    plugs, errs = plugins.scan_plugins(d, name, settings, markets)
+    inv.errors += errs
+    for pl in plugs:
+        if pl.extra.get("install_exists"):
+            contents, skill_tokens = _plugin_contents(pl, name)
+            pl.extra["skills"] = sum(1 for c in contents if c.kind == "skill")
+            pl.extra["skill_tokens"] = skill_tokens
+            inv.resources += contents
+    inv.resources += [*markets, *plugs]
+
+    for r in inv.resources:
+        if r.profile == name and r.kind == "skill" and _override_off(r, overrides):
+            r.enabled = False
+
+    mcps, err = mcp.scan_claude_json(d, name, projects.get(name, []))
+    if err:
+        inv.errors.append(err)
+    inv.resources += mcps
+    for project in projects.get(name, []):
+        inv.resources += _project_resources(project, name, profile_paths)
