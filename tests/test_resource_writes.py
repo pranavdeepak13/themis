@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import orjson
@@ -15,12 +16,15 @@ from themis.profiles.discover import discover_profiles
 from themis.redact import MASK
 from themis.registry.manifest import build_manifest
 from themis.registry.search import inspect, search
-from themis.registry.urn import make_urn, parse_urn
+from themis.registry.urn import make_urn, parse_urn, valid_publisher
 from themis.resources import settings as st
 from themis.resources.model import Resource
 from themis.resources.scan import scan_inventory
 from themis.resources.symlinks import PromoteError, plan_promote, promote, shared_root
 from themis.sessions import meta
+
+# identifier pattern from ard-spec spec/schemas/ard-entry.schema.json (EntryFields.identifier)
+ARD_IDENTIFIER = re.compile(r"^urn:air:[a-zA-Z0-9.-]+(:[a-zA-Z0-9._-]+)+$")
 
 
 def _profile(name: str):
@@ -158,7 +162,15 @@ def test_urn_follows_ard_grammar_and_is_stable(tree: dict[str, Path]) -> None:
     plug = next(r for r in inv.resources if r.name == "plug-skill")
     assert make_urn(plug) == "urn:air:themis.local:skill:plugin.demo:plug-skill"
     odd = a.model_copy(update={"name": "anthropic-skills:x y"})
-    assert parse_urn(make_urn(odd))["name"] == "anthropic-skills:x y"
+    odd2 = a.model_copy(update={"name": "anthropic-skills:x-y"})
+    assert ARD_IDENTIFIER.match(make_urn(odd)) and ARD_IDENTIFIER.match(
+        make_urn(a.model_copy(update={"name": "demo@mk"}))
+    )
+    assert make_urn(odd) != make_urn(odd2)  # different names stay distinct after sanitising
+    assert make_urn(odd) == make_urn(odd)
+    with pytest.raises(ValueError):
+        make_urn(a, "localhost")  # single-label publishers are not accepted
+    assert not valid_publisher("10.0.0.1") and valid_publisher("example.com")
     assert make_urn(Resource(kind="hook", name="h", profile="alpha")) is None
     assert parse_urn("urn:air:onlypublisher") is None
 
@@ -167,7 +179,8 @@ def test_manifest_is_ard_shaped_and_clean(tree: dict[str, Path]) -> None:
     inv = scan_inventory(discover_profiles())
     m = build_manifest(inv.resources, meta={"resources": {}})
     by_id = {e["identifier"]: e for e in m["entries"]}
-    for e in m["entries"]:  # MUST fields, and exactly one of url / data
+    for e in m["entries"]:  # MUST fields, exactly one of url / data, and a schema-legal identifier
+        assert ARD_IDENTIFIER.match(e["identifier"]), e["identifier"]
         assert {"identifier", "displayName", "type"} <= e.keys() and ("url" in e) != ("data" in e)
     skill = by_id["urn:air:themis.local:skill:user:shared-skill"]
     assert skill["type"] == "application/agent-skills+md" and skill["url"].startswith("file://")
@@ -184,8 +197,9 @@ def test_search_shape_filters_and_paging(tree: dict[str, Path]) -> None:
     inv = scan_inventory(discover_profiles())
     m = build_manifest(inv.resources, meta={"resources": {}})
     resp = search(m, "shared skill", {"type": ["application/agent-skills+md"]})
-    assert resp["referrals"] == [] and resp["results"][0]["displayName"] == "shared-skill"
-    assert resp["results"][0]["score"] == 100
+    assert "referrals" not in resp and resp["results"][0]["displayName"] == "shared-skill"
+    top = resp["results"][0]  # SearchResultItem requires identifier, integer score 0-100 and a source URI
+    assert top["score"] == 100 and isinstance(top["score"], int) and top["source"]
     assert search(m, "", {"publisher": "themis.local", "type": "application/mcp-server-card+json"})["results"]
     assert not search(m, "", {"publisher": "other.example"})["results"]  # AND across keys, publisher from URN
     both = search(m, "", {"metadata.themis.profiles": ["alpha", "beta"]})["results"]  # OR within a key

@@ -281,6 +281,13 @@ app.add_typer(registry_app, name="registry")
 
 def _manifest(publisher: str) -> dict:
     from themis.registry.manifest import build_manifest
+    from themis.registry.urn import valid_publisher
+
+    if not valid_publisher(publisher):
+        err.print(
+            f"[red]--publisher must be a fully qualified domain (for example example.com), got {publisher!r}[/red]"
+        )
+        raise typer.Exit(2)
     from themis.resources.store import load_all
 
     data = load_all()
@@ -333,7 +340,10 @@ def registry_search(
     for term, value in (("type", type), ("metadata.themis.profiles", profile), ("metadata.themis.scope", scope)):
         if value:
             filt.setdefault(term, []).append(value)
-    resp = search(_manifest(publisher), query, filt, limit)
+    from themis.paths import themis_home
+
+    source = (themis_home() / "registry" / "ard.json").as_uri()
+    resp = search(_manifest(publisher), query, filt, limit, source=source)
     if as_json:
         typer.echo(orjson.dumps(resp, option=orjson.OPT_INDENT_2).decode())
         return

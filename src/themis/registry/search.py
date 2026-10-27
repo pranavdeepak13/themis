@@ -1,8 +1,9 @@
 """Local registry search shaped like ARD `POST /search` (v0.91 section 5.3).
 
-Request: `text`, `filter` ({term: [values]}; OR within a key, AND across keys; a bare scalar counts as one
-value), `pageSize` (default 10, max 100), `pageToken`. Response: `results[]` (each with `identifier` and an
-informational `score` 0-100) and `referrals[]` (always empty: Themis is a single local registry).
+Request (ard.openapi.yaml SearchRequest): `query` {`text`, `filter`}, `federation`, `pageSize` (default 10, max 100
+per the spec text), `pageToken`. `filter` is {term: [values]}: OR within a term, AND across terms, a bare scalar
+counts as one value. Response: `results[]` (each with `identifier`, integer `score` 0-100 and `source` URI) and
+`pageToken`; `referrals` is only returned in referral mode, which a single local registry never uses.
 Ranking sits behind `SearchBackend`, so an embedding backend can replace keyword scoring later.
 """
 
@@ -41,7 +42,7 @@ def passes(entry: dict[str, Any], filt: dict[str, Any]) -> bool:
 
 
 class SearchBackend(Protocol):
-    def rank(self, entries: list[dict[str, Any]], text: str) -> list[tuple[float, dict[str, Any]]]:
+    def rank(self, entries: list[dict[str, Any]], text: str) -> list[tuple[int, dict[str, Any]]]:
         """Score and order entries for the text; entries that do not match are omitted."""
         ...
 
@@ -49,10 +50,10 @@ class SearchBackend(Protocol):
 class KeywordBackend:
     """Every query word must appear somewhere; name hits weigh most, then tags, then description."""
 
-    def rank(self, entries: list[dict[str, Any]], text: str) -> list[tuple[float, dict[str, Any]]]:
+    def rank(self, entries: list[dict[str, Any]], text: str) -> list[tuple[int, dict[str, Any]]]:
         words = [w.lower() for w in _WORD.findall(text)]
         if not words:
-            return [(0.0, e) for e in entries]
+            return [(0, e) for e in entries]
         scored: list[tuple[float, dict[str, Any]]] = []
         for e in entries:
             name = str(e.get("displayName", "")).lower()
@@ -70,7 +71,7 @@ class KeywordBackend:
             if total:
                 scored.append((total, e))
         best = max((s for s, _ in scored), default=1.0)
-        return sorted(((round(100 * s / best, 1), e) for s, e in scored), key=lambda t: (-t[0], t[1]["identifier"]))
+        return sorted(((round(100 * s / best), e) for s, e in scored), key=lambda t: (-t[0], t[1]["identifier"]))
 
 
 def search(
@@ -80,6 +81,7 @@ def search(
     page_size: int = DEFAULT_PAGE,
     page_token: str | None = None,
     backend: SearchBackend | None = None,
+    source: str = "urn:themis:local",
 ) -> dict[str, Any]:
     entries = [e for e in manifest["entries"] if passes(e, filter or {})]
     ranked = (backend or KeywordBackend()).rank(entries, text)
@@ -88,10 +90,14 @@ def search(
     page = ranked[start : start + size]
     out: dict[str, Any] = {
         "results": [
-            {"identifier": e["identifier"], "score": s, **{k: v for k, v in e.items() if k != "identifier"}}
+            {
+                "identifier": e["identifier"],
+                "score": int(s),
+                "source": source,
+                **{k: v for k, v in e.items() if k != "identifier"},
+            }
             for s, e in page
         ],
-        "referrals": [],
     }
     if start + size < len(ranked):
         out["pageToken"] = str(start + size)
