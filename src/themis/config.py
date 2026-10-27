@@ -35,6 +35,10 @@ class Config(BaseModel):
     aliases: dict[str, str] = Field(default_factory=dict)
     context_windows: dict[str, int] = Field(default_factory=lambda: dict(DEFAULT_WINDOWS))
     prices: dict[str, Price] = Field(default_factory=lambda: dict(DEFAULT_PRICES))
+    # Shell template run by "open resume in terminal"; {command} is the resume command. None = copy only.
+    resume_launcher: str | None = None
+    # Sessions this many days (or fewer) from being purged are flagged.
+    retention_warn_days: int = 7
 
 
 def load_config() -> Config:
@@ -46,6 +50,11 @@ def load_config() -> Config:
         return Config()
     cfg = Config()
     cfg.aliases = {str(k): str(v) for k, v in raw.get("aliases", {}).items()}
+    launcher = raw.get("resume_launcher")
+    cfg.resume_launcher = launcher if isinstance(launcher, str) and launcher.strip() else None
+    warn = raw.get("retention_warn_days")
+    if isinstance(warn, int) and warn >= 0:
+        cfg.retention_warn_days = warn
     cfg.context_windows |= {str(k): int(v) for k, v in raw.get("context_windows", {}).items()}
     for fam, p in raw.get("prices", {}).items():
         try:

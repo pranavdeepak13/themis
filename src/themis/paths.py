@@ -22,3 +22,15 @@ def config_path() -> Path:
 
 def audit_log_path() -> Path:
     return themis_home() / "audit.log"
+
+
+def meta_path() -> Path:
+    return themis_home() / "meta.json"
+
+
+def archive_dir() -> Path:
+    return themis_home() / "archive"
+
+
+def exports_dir() -> Path:
+    return themis_home() / "exports"

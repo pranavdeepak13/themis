@@ -24,6 +24,8 @@ uv run themis profiles       # list discovered profiles
 uv run themis sessions       # list sessions (--profile X --sort tokens|recent|context --json)
 uv run themis session <id>   # one session in detail (id prefix ok)
 uv run themis scan --rebuild # rebuild the summary cache
+uv run themis                # terminal UI (Sessions is functional; other sections are placeholders)
+uv run themis web [--port N] # same UI in the browser, 127.0.0.1 only, default port 8765
 uv run pytest                # tests (synthetic fixtures only)
 uv run ruff check . && uv run ruff format --check .
 sh scripts/install-hooks.sh  # install the pre-commit transcript guard

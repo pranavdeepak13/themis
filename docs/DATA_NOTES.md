@@ -58,7 +58,7 @@ Envelope fields on `user`, `assistant`, `attachment` and `system` entries: `pare
 ## Settings
 
 - `settings.json` keys seen: `enabledPlugins`, `extraKnownMarketplaces`, `hooks`, `permissions`, `model`, `modelSettings`, `statusLine`, `theme`, `tui`, `skillOverrides`, `autoMode`, `autoCompactEnabled`, notification flags.
-- `cleanupPeriodDays` is **not set in any profile**, so retention falls back to Claude Code's default. The default must be verified against the docs in Phase 2 before the retention warning ships.
+- `cleanupPeriodDays` is **not set in any profile**, so retention falls back to Claude Code's default. Verified in Phase 2 from the settings schema inside the installed binary (2.1.311): integer, minimum 1, **default 30**, 0 is rejected. Desktop-surface sessions (`entrypoint: claude-desktop`) are exempt from the sweep unless `desktopSessionCleanupPeriodDays` is set. The oldest transcript across the four profiles is 18 days old, which fits a 30-day sweep.
 
 ## Edge cases observed
 

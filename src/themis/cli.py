@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import enum
-from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -14,13 +13,15 @@ from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
 from themis.config import Config, load_config
+from themis.format import human, human_bytes
+from themis.format import when as _when
 from themis.profiles.discover import discover_profiles
 from themis.profiles.model import Profile
 from themis.sessions.cache import find_transcripts, load_sessions
 from themis.sessions.metrics import context_percent, context_window, estimate_cost
 from themis.sessions.model import SessionSummary
 
-app = typer.Typer(no_args_is_help=True, add_completion=False, help="Manage Claude Code profiles.")
+app = typer.Typer(add_completion=False, help="Manage Claude Code profiles. Run without a command for the UI.")
 console = Console()
 err = Console(stderr=True)
 
@@ -29,31 +30,6 @@ class SortKey(enum.StrEnum):
     tokens = "tokens"
     recent = "recent"
     context = "context"
-
-
-def human(n: float) -> str:
-    for unit, div in (("B", 1e9), ("M", 1e6), ("k", 1e3)):
-        if abs(n) >= div:
-            return f"{n / div:.1f}{unit}"
-    return str(int(n))
-
-
-def human_bytes(n: int) -> str:
-    f = float(n)
-    for unit in ("B", "KB", "MB", "GB"):
-        if f < 1024 or unit == "GB":
-            return f"{f:.0f}{unit}" if unit == "B" else f"{f:.1f}{unit}"
-        f /= 1024
-    return f"{n}B"
-
-
-def _when(iso: str | None) -> str:
-    if not iso:
-        return "-"
-    try:
-        return datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone().strftime("%Y-%m-%d %H:%M")
-    except ValueError:
-        return iso[:16]
 
 
 def _select(profile: str | None) -> list[Profile]:
@@ -97,6 +73,24 @@ def _row_dict(s: SessionSummary, cfg: Config) -> dict:
     d["cost_estimate_incomplete"] = incomplete
     d["cost_estimate_note"] = "API-equivalent estimate; all profiles are on subscription"
     return d
+
+
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context) -> None:
+    """Open the terminal UI when no command is given."""
+    if ctx.invoked_subcommand is None:
+        from themis.ui.app import run
+
+        run()
+
+
+@app.command()
+def web(port: Annotated[int, typer.Option("--port", "-p", help="Port to serve on (127.0.0.1 only).")] = 8765) -> None:
+    """Serve the same UI in the browser at http://127.0.0.1:PORT."""
+    from themis.ui.serve import HOST, serve
+
+    err.print(f"Themis web UI on http://{HOST}:{port}  (Ctrl+C to stop)")
+    serve(port)
 
 
 @app.command()

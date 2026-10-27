@@ -1,0 +1,267 @@
+/* Themis dark theme. Theme variables come from Textual's dark theme; accents are set here. */
+
+Screen {
+    background: #0e1116;
+    color: #d7dde8;
+}
+
+Header {
+    background: #161b22;
+    color: #7ee0c3;
+}
+
+Footer {
+    background: #161b22;
+}
+
+.hidden {
+    display: none;
+}
+
+#profiles {
+    height: 3;
+    background: #161b22;
+}
+
+#shell {
+    height: 1fr;
+}
+
+#nav {
+    width: 16;
+    background: #12161d;
+    border-right: solid #2a313c;
+    padding: 1 0;
+}
+
+#nav > .option-list--option-highlighted {
+    background: #1f6f5c;
+    color: white;
+    text-style: bold;
+}
+
+#main {
+    width: 1fr;
+    height: 1fr;
+}
+
+PlaceholderPane {
+    height: 100%;
+}
+
+/* Sessions pane */
+
+SessionsPane {
+    height: 100%;
+}
+
+#filters {
+    height: 3;
+}
+
+.filter {
+    width: 1fr;
+    min-width: 12;
+    background: #12161d;
+    border: tall #2a313c;
+}
+
+.filter:focus {
+    border: tall #7ee0c3;
+}
+
+.filter.-invalid {
+    border: tall #e5534b;
+}
+
+#statusbar {
+    height: 1;
+    padding: 0 1;
+}
+
+#status {
+    width: 1fr;
+    color: #8b95a5;
+}
+
+#progress {
+    width: 30;
+}
+
+#banner {
+    height: 3;
+    background: #3a2f12;
+    border: tall #b08800;
+    padding: 0 1;
+}
+
+#banner-text {
+    width: 1fr;
+    content-align: left middle;
+    height: 100%;
+    color: #f2cc60;
+}
+
+#btn-archive-risk {
+    min-width: 22;
+}
+
+#body {
+    height: 1fr;
+}
+
+#left {
+    width: 70%;
+    padding-right: 1;
+}
+
+#detail {
+    width: 30%;
+    min-width: 40;
+    border-left: solid #2a313c;
+    padding-left: 1;
+}
+
+/* Narrow terminals: table on top, detail below */
+.stacked #body {
+    layout: vertical;
+}
+
+.stacked #left {
+    width: 100%;
+    height: 55%;
+    padding-right: 0;
+}
+
+.stacked #detail {
+    width: 100%;
+    height: 1fr;
+    border-left: none;
+    border-top: solid #2a313c;
+    padding-left: 0;
+}
+
+DataTable {
+    height: 1fr;
+    background: #0e1116;
+}
+
+DataTable > .datatable--header {
+    background: #1b222c;
+    color: #7ee0c3;
+    text-style: bold;
+}
+
+DataTable > .datatable--cursor {
+    background: #1f6f5c;
+    color: white;
+}
+
+#search-panel {
+    height: 45%;
+    border-top: solid #2a313c;
+}
+
+#search-status {
+    height: 1;
+    color: #8b95a5;
+}
+
+#actions, #actions2 {
+    height: 1;
+    margin-bottom: 1;
+}
+
+#actions Button, #actions2 Button, #bulk Button {
+    min-width: 8;
+    margin-right: 1;
+}
+
+#bulk {
+    height: 1;
+    background: #12261f;
+    margin-bottom: 1;
+}
+
+#bulk-text {
+    width: 11;
+    color: #7ee0c3;
+}
+
+#detail-tabs {
+    height: 1fr;
+}
+
+#timeline-status {
+    height: 1;
+    color: #8b95a5;
+}
+
+/* Placeholder sections */
+
+.placeholder-title {
+    text-style: bold;
+    color: #7ee0c3;
+    padding: 2 4 0 4;
+}
+
+.placeholder-text {
+    padding: 1 4;
+    color: #8b95a5;
+}
+
+/* Modals */
+
+ModalScreen {
+    align: center middle;
+    background: #000000 60%;
+}
+
+#dialog {
+    width: 80%;
+    max-width: 110;
+    height: auto;
+    max-height: 85%;
+    background: #161b22;
+    border: thick #1f6f5c;
+    padding: 1 2;
+}
+
+#dialog.danger {
+    border: thick #e5534b;
+}
+
+#dialog-title {
+    text-style: bold;
+    padding-bottom: 1;
+}
+
+#dialog-body {
+    height: auto;
+    max-height: 22;
+}
+
+#dialog-prompt {
+    padding-top: 1;
+}
+
+#dialog-buttons {
+    height: 3;
+    margin-top: 1;
+    align-horizontal: right;
+}
+
+#dialog-buttons Button {
+    margin-left: 1;
+}
+
+#resume-command {
+    background: #0e1116;
+    padding: 1 2;
+    margin-bottom: 1;
+}
+
+#choices {
+    height: auto;
+    max-height: 16;
+}
