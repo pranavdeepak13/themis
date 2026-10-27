@@ -1,85 +1,102 @@
-"""Local registry search: keyword scoring with field filters, behind a backend interface.
+"""Local registry search shaped like ARD `POST /search` (v0.91 section 5.3).
 
-`SearchBackend` is the seam for a later embedding backend; only the keyword backend exists now.
+Request: `text`, `filter` ({term: [values]}; OR within a key, AND across keys; a bare scalar counts as one
+value), `pageSize` (default 10, max 100), `pageToken`. Response: `results[]` (each with `identifier` and an
+informational `score` 0-100) and `referrals[]` (always empty: Themis is a single local registry).
+Ranking sits behind `SearchBackend`, so an embedding backend can replace keyword scoring later.
 """
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
 from typing import Any, Protocol
 
+from themis.registry.urn import parse_urn
+
 _WORD = re.compile(r"[A-Za-z0-9]+")
+DEFAULT_PAGE = 10
+MAX_PAGE = 100
 
 
-@dataclass(frozen=True)
-class Filters:
-    type: str | None = None
-    profile: str | None = None
-    scope: str | None = None
-    origin: str | None = None
-    tag: str | None = None
+def term_values(entry: dict[str, Any], term: str) -> list[str]:
+    """Values an entry has for a filter term: top-level fields, `publisher` (from the URN), or a dotted path."""
+    if term == "publisher":
+        parsed = parse_urn(entry["identifier"])
+        return [parsed["publisher"]] if parsed else []
+    cur: Any = entry
+    for part in term.split("."):
+        cur = cur.get(part) if isinstance(cur, dict) else None
+    if cur is None:
+        return []
+    return [str(x) for x in cur] if isinstance(cur, list) else [str(cur)]
 
 
-@dataclass(frozen=True)
-class Hit:
-    score: float
-    entry: dict[str, Any]
+def passes(entry: dict[str, Any], filt: dict[str, Any]) -> bool:
+    for term, wanted in filt.items():
+        values = wanted if isinstance(wanted, list) else [wanted]
+        have = {v.lower() for v in term_values(entry, term)}
+        if not any(str(v).lower() in have for v in values):
+            return False
+    return True
 
 
 class SearchBackend(Protocol):
-    def search(self, entries: list[dict[str, Any]], query: str, filters: Filters, limit: int) -> list[Hit]: ...
-
-
-def _passes(e: dict[str, Any], f: Filters) -> bool:
-    return (
-        (f.type is None or e.get("type") == f.type)
-        and (f.profile is None or f.profile in e.get("profiles", []))
-        and (f.scope is None or e.get("scope") == f.scope)
-        and (f.origin is None or e.get("origin") == f.origin)
-        and (f.tag is None or f.tag.lower() in e.get("tags", []))
-    )
+    def rank(self, entries: list[dict[str, Any]], text: str) -> list[tuple[float, dict[str, Any]]]:
+        """Score and order entries for the text; entries that do not match are omitted."""
+        ...
 
 
 class KeywordBackend:
     """Every query word must appear somewhere; name hits weigh most, then tags, then description."""
 
-    def search(self, entries: list[dict[str, Any]], query: str, filters: Filters, limit: int) -> list[Hit]:
-        words = [w.lower() for w in _WORD.findall(query)]
-        hits: list[Hit] = []
+    def rank(self, entries: list[dict[str, Any]], text: str) -> list[tuple[float, dict[str, Any]]]:
+        words = [w.lower() for w in _WORD.findall(text)]
+        if not words:
+            return [(0.0, e) for e in entries]
+        scored: list[tuple[float, dict[str, Any]]] = []
         for e in entries:
-            if not _passes(e, filters):
-                continue
-            if not words:
-                hits.append(Hit(0.0, e))
-                continue
-            name = str(e.get("name", "")).lower()
+            name = str(e.get("displayName", "")).lower()
             desc = str(e.get("description") or "").lower()
             tags = " ".join(e.get("tags", []))
-            score = 0.0
+            total = 0.0
             for w in words:
                 s = (3.0 if w in name else 0.0) + (2.0 if w in tags else 0.0) + (1.0 if w in desc else 0.0)
                 if name == w:
                     s += 3.0
                 if s == 0:
-                    score = 0.0
+                    total = 0.0
                     break
-                score += s
-            if score:
-                hits.append(Hit(score, e))
-        hits.sort(key=lambda h: (-h.score, h.entry["urn"]))
-        return hits[:limit]
+                total += s
+            if total:
+                scored.append((total, e))
+        best = max((s for s, _ in scored), default=1.0)
+        return sorted(((round(100 * s / best, 1), e) for s, e in scored), key=lambda t: (-t[0], t[1]["identifier"]))
 
 
 def search(
     manifest: dict[str, Any],
-    query: str,
-    filters: Filters | None = None,
-    limit: int = 20,
+    text: str = "",
+    filter: dict[str, Any] | None = None,  # noqa: A002 - the ARD field name
+    page_size: int = DEFAULT_PAGE,
+    page_token: str | None = None,
     backend: SearchBackend | None = None,
-) -> list[Hit]:
-    return (backend or KeywordBackend()).search(manifest["resources"], query, filters or Filters(), limit)
+) -> dict[str, Any]:
+    entries = [e for e in manifest["entries"] if passes(e, filter or {})]
+    ranked = (backend or KeywordBackend()).rank(entries, text)
+    size = max(1, min(page_size, MAX_PAGE))
+    start = int(page_token) if page_token and page_token.isdigit() else 0
+    page = ranked[start : start + size]
+    out: dict[str, Any] = {
+        "results": [
+            {"identifier": e["identifier"], "score": s, **{k: v for k, v in e.items() if k != "identifier"}}
+            for s, e in page
+        ],
+        "referrals": [],
+    }
+    if start + size < len(ranked):
+        out["pageToken"] = str(start + size)
+    return out
 
 
 def inspect(manifest: dict[str, Any], urn: str) -> dict[str, Any] | None:
-    return next((e for e in manifest["resources"] if e["urn"] == urn), None)
+    return next((e for e in manifest["entries"] if e["identifier"] == urn), None)

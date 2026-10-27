@@ -279,29 +279,29 @@ registry_app = typer.Typer(help="ARD-style local resource registry.", add_comple
 app.add_typer(registry_app, name="registry")
 
 
-def _manifest(host: str) -> dict:
+def _manifest(publisher: str) -> dict:
     from themis.registry.manifest import build_manifest
     from themis.resources.store import load_all
 
     data = load_all()
-    return build_manifest(data.inventory.resources, host, data.meta)
+    return build_manifest(data.inventory.resources, publisher, data.meta)
 
 
 @registry_app.command("manifest")
 def registry_manifest(
-    out: Annotated[Path | None, typer.Option("--out", "-o", help="Default: ~/.themis/registry/manifest.json")] = None,
-    host: Annotated[str, typer.Option(help="Host segment of the urn:air: identifiers.")] = "local",
+    out: Annotated[Path | None, typer.Option("--out", "-o", help="Default: ~/.themis/registry/ard.json")] = None,
+    publisher: Annotated[str, typer.Option(help="Publisher domain in the urn:air: identifiers.")] = "themis.local",
     stdout: Annotated[bool, typer.Option("--stdout", help="Print instead of writing a file.")] = False,
 ) -> None:
-    """Write the manifest JSON of every skill, agent, command, MCP server and plugin."""
+    """Write an ARD v0.91 manifest of every skill, agent, command, MCP server and plugin."""
     from themis import audit
     from themis.paths import themis_home
 
-    body = orjson.dumps(_manifest(host), option=orjson.OPT_INDENT_2)
+    body = orjson.dumps(_manifest(publisher), option=orjson.OPT_INDENT_2)
     if stdout:
         typer.echo(body.decode())
         return
-    path = out or themis_home() / "registry" / "manifest.json"
+    path = out or themis_home() / "registry" / "ard.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(body + b"\n")
     audit.record("registry.manifest", path=str(path))
@@ -311,34 +311,51 @@ def registry_manifest(
 @registry_app.command("search")
 def registry_search(
     query: str,
-    type: Annotated[str | None, typer.Option("--type")] = None,
+    filter: Annotated[
+        list[str] | None, typer.Option("--filter", "-f", help="term=value, repeatable (OR per term)")
+    ] = None,
+    type: Annotated[
+        str | None, typer.Option("--type", help="Media type filter, e.g. application/agent-skills+md")
+    ] = None,
     profile: Annotated[str | None, typer.Option("--profile", "-p")] = None,
     scope: Annotated[str | None, typer.Option("--scope")] = None,
-    limit: Annotated[int, typer.Option("--limit", "-n")] = 20,
+    limit: Annotated[int, typer.Option("--limit", "-n")] = 10,
     as_json: Annotated[bool, typer.Option("--json")] = False,
-    host: Annotated[str, typer.Option()] = "local",
+    publisher: Annotated[str, typer.Option()] = "themis.local",
 ) -> None:
-    """Keyword search over the registry with field filters."""
-    from themis.registry.search import Filters, search
+    """Keyword search shaped like ARD POST /search (text + filter)."""
+    from themis.registry.search import search
 
-    hits = search(_manifest(host), query, Filters(type=type, profile=profile, scope=scope), limit)
+    filt: dict[str, list[str]] = {}
+    for item in filter or []:
+        term, _, value = item.partition("=")
+        filt.setdefault(term, []).append(value)
+    for term, value in (("type", type), ("metadata.themis.profiles", profile), ("metadata.themis.scope", scope)):
+        if value:
+            filt.setdefault(term, []).append(value)
+    resp = search(_manifest(publisher), query, filt, limit)
     if as_json:
-        typer.echo(orjson.dumps([{"score": h.score, **h.entry} for h in hits], option=orjson.OPT_INDENT_2).decode())
+        typer.echo(orjson.dumps(resp, option=orjson.OPT_INDENT_2).decode())
         return
-    table = Table("score", "urn", "profiles", "description")
-    for h in hits:
+    table = Table("score", "identifier", "type", "description")
+    for r in resp["results"]:
         table.add_row(
-            f"{h.score:.0f}", h.entry["urn"], ",".join(h.entry["profiles"]), (h.entry.get("description") or "")[:60]
+            f"{r['score']:.0f}",
+            r["identifier"],
+            r["type"].removeprefix("application/"),
+            (r.get("description") or "")[:50],
         )
     console.print(table)
+    if "pageToken" in resp:
+        console.print("[dim]More results available (use --limit).[/dim]")
 
 
 @registry_app.command("inspect")
-def registry_inspect(urn: str, host: Annotated[str, typer.Option()] = "local") -> None:
+def registry_inspect(urn: str, publisher: Annotated[str, typer.Option()] = "themis.local") -> None:
     """Show one registry entry."""
     from themis.registry.search import inspect
 
-    entry = inspect(_manifest(host), urn)
+    entry = inspect(_manifest(publisher), urn)
     if entry is None:
         err.print(f"[red]No resource {urn!r}[/red]")
         raise typer.Exit(1)

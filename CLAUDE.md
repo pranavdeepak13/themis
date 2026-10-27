@@ -26,7 +26,7 @@ uv run themis session <id>   # one session in detail (id prefix ok)
 uv run themis scan --rebuild # rebuild the summary cache
 uv run themis resources [kind] [--profile X --json]  # skills, commands, agents, hooks, mcp, plugins
 uv run themis doctor         # read-only health checks
-uv run themis registry manifest|search "q"|inspect <urn>  # urn:air: registry
+uv run themis registry manifest|search "q" [-f term=value]|inspect <urn>  # ARD v0.91 registry
 uv run themis                # terminal UI (Sessions, resource sections, Compare and Doctor work; Insights is a placeholder)
 uv run themis web [--port N] # same UI in the browser, 127.0.0.1 only, default port 8765
 uv run pytest                # tests (synthetic fixtures only)

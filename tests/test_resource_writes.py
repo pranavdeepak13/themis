@@ -14,9 +14,10 @@ from themis.paths import audit_log_path
 from themis.profiles.discover import discover_profiles
 from themis.redact import MASK
 from themis.registry.manifest import build_manifest
-from themis.registry.search import Filters, inspect, search
+from themis.registry.search import inspect, search
 from themis.registry.urn import make_urn, parse_urn
 from themis.resources import settings as st
+from themis.resources.model import Resource
 from themis.resources.scan import scan_inventory
 from themis.resources.symlinks import PromoteError, plan_promote, promote, shared_root
 from themis.sessions import meta
@@ -144,39 +145,55 @@ def test_resource_tags_preserve_session_meta(tree: dict[str, Path]) -> None:
     assert meta.resource_tags(meta.load_meta(), "skill", "solo") == []
 
 
-def test_urn_stable_across_profiles_paths_and_hosts(tree: dict[str, Path]) -> None:
+def test_urn_follows_ard_grammar_and_is_stable(tree: dict[str, Path]) -> None:
     inv = scan_inventory(discover_profiles())
     a = next(r for r in inv.resources if r.name == "shared-skill" and r.profile == "alpha")
     b = next(r for r in inv.resources if r.name == "shared-skill" and r.profile == "beta")
     urn = make_urn(a)
-    assert urn == make_urn(b) == "urn:air:local:skill:user:shared-skill"
+    assert urn == make_urn(b) == "urn:air:themis.local:skill:user:shared-skill"
     moved = a.model_copy(update={"path": "/elsewhere/SKILL.md", "realpath": "/else", "profile": "zzz"})
-    assert make_urn(moved) == urn and make_urn(a, "example.org") == "urn:air:example.org:skill:user:shared-skill"
-    assert parse_urn(urn) == {"host": "local", "type": "skill", "ns": "user", "name": "shared-skill"}
+    assert make_urn(moved) == urn
+    assert make_urn(a, "example.com") == "urn:air:example.com:skill:user:shared-skill"
+    assert parse_urn(urn) == {"publisher": "themis.local", "namespace": "skill:user", "name": "shared-skill"}
     plug = next(r for r in inv.resources if r.name == "plug-skill")
-    assert make_urn(plug) == "urn:air:local:skill:plugin.demo:plug-skill"
+    assert make_urn(plug) == "urn:air:themis.local:skill:plugin.demo:plug-skill"
     odd = a.model_copy(update={"name": "anthropic-skills:x y"})
     assert parse_urn(make_urn(odd))["name"] == "anthropic-skills:x y"
-    assert make_urn(Resource_hook()) is None
+    assert make_urn(Resource(kind="hook", name="h", profile="alpha")) is None
+    assert parse_urn("urn:air:onlypublisher") is None
 
 
-def Resource_hook():  # noqa: N802
-    from themis.resources.model import Resource
-
-    return Resource(kind="hook", name="h", profile="alpha")
-
-
-def test_manifest_variants_and_search(tree: dict[str, Path]) -> None:
+def test_manifest_is_ard_shaped_and_clean(tree: dict[str, Path]) -> None:
     inv = scan_inventory(discover_profiles())
     m = build_manifest(inv.resources, meta={"resources": {}})
-    by_urn = {e["urn"]: e for e in m["resources"]}
-    drift = by_urn["urn:air:local:skill:user:drift-skill"]
-    assert drift["content_hash"] is None and len(drift["variants"]) == 2
-    shared = by_urn["urn:air:local:skill:user:shared-skill"]
-    assert shared["profiles"] == ["alpha", "beta"] and shared["scope"] == "global"
+    by_id = {e["identifier"]: e for e in m["entries"]}
+    for e in m["entries"]:  # MUST fields, and exactly one of url / data
+        assert {"identifier", "displayName", "type"} <= e.keys() and ("url" in e) != ("data" in e)
+    skill = by_id["urn:air:themis.local:skill:user:shared-skill"]
+    assert skill["type"] == "application/agent-skills+md" and skill["url"].startswith("file://")
+    assert skill["metadata"]["themis"]["profiles"] == ["alpha", "beta"]
+    assert skill["metadata"]["themis"]["scope"] == "global"
+    drift = by_id["urn:air:themis.local:skill:user:drift-skill"]
+    assert len(drift["metadata"]["themis"]["variants"]) == 2
+    mcp = by_id["urn:air:themis.local:mcp-server:user:github"]
+    assert mcp["type"] == "application/mcp-server-card+json" and "data" in mcp
     assert FAKE_KEY not in orjson.dumps(m).decode()
-    hits = search(m, "shared skill", Filters(type="skill"))
-    assert hits and hits[0].entry["name"] == "shared-skill"
-    assert search(m, "", Filters(type="mcp-server", profile="alpha"))
-    assert not search(m, "shared nonexistentword")
-    assert inspect(m, shared["urn"]) == shared and inspect(m, "urn:air:local:skill:user:none") is None
+
+
+def test_search_shape_filters_and_paging(tree: dict[str, Path]) -> None:
+    inv = scan_inventory(discover_profiles())
+    m = build_manifest(inv.resources, meta={"resources": {}})
+    resp = search(m, "shared skill", {"type": ["application/agent-skills+md"]})
+    assert resp["referrals"] == [] and resp["results"][0]["displayName"] == "shared-skill"
+    assert resp["results"][0]["score"] == 100
+    assert search(m, "", {"publisher": "themis.local", "type": "application/mcp-server-card+json"})["results"]
+    assert not search(m, "", {"publisher": "other.example"})["results"]  # AND across keys, publisher from URN
+    both = search(m, "", {"metadata.themis.profiles": ["alpha", "beta"]})["results"]  # OR within a key
+    assert both
+    assert not search(m, "shared nonexistentword")["results"]
+    page1 = search(m, "", page_size=3)
+    assert len(page1["results"]) == 3 and page1["pageToken"] == "3"
+    page2 = search(m, "", page_size=3, page_token=page1["pageToken"])
+    assert {r["identifier"] for r in page1["results"]}.isdisjoint(r["identifier"] for r in page2["results"])
+    shared = "urn:air:themis.local:skill:user:shared-skill"
+    assert inspect(m, shared)["identifier"] == shared and inspect(m, "urn:air:themis.local:skill:user:none") is None
