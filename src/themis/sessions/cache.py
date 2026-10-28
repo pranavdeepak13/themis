@@ -7,9 +7,11 @@ count, bytes and newest mtime of all related files) and the schema version are u
 from __future__ import annotations
 
 import os
+import sys
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from concurrent.futures import ProcessPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
 
 import orjson
@@ -22,6 +24,25 @@ from themis.sessions.parser import parse_session
 
 Progress = Callable[[int, int], None]
 POOL_THRESHOLD = 6
+
+
+@contextmanager
+def _real_stderr() -> Iterator[None]:
+    """Give multiprocessing a usable stderr. Textual replaces it with an object whose fileno() is -1,
+    and the pool's resource tracker passes that fd to its child ("bad value(s) in fds_to_keep")."""
+    try:
+        sys.stderr.fileno()
+        ok = sys.stderr.fileno() >= 0
+    except (AttributeError, OSError, ValueError):
+        ok = False
+    if ok or sys.__stderr__ is None:
+        yield
+        return
+    saved, sys.stderr = sys.stderr, sys.__stderr__
+    try:
+        yield
+    finally:
+        sys.stderr = saved
 
 
 def _signature(profile_dir: Path, transcript: Path) -> list[int]:
@@ -102,7 +123,7 @@ def load_sessions(
             misses.append((profile.name, str(profile.path), str(transcript)))
 
     if len(misses) >= POOL_THRESHOLD:
-        with ProcessPoolExecutor(max_workers=min(8, os.cpu_count() or 2)) as pool:
+        with _real_stderr(), ProcessPoolExecutor(max_workers=min(8, os.cpu_count() or 2)) as pool:
             for summary in pool.map(_parse_and_store, misses, chunksize=2):
                 results.append(summary)
                 done += 1

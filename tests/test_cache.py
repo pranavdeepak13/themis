@@ -89,6 +89,28 @@ def test_process_pool_path(tree, monkeypatch) -> None:
     assert len(got) == 3
 
 
+def test_process_pool_survives_textual_style_stderr(tree: dict[str, Path]) -> None:
+    """Textual swaps sys.stderr for an object with fileno() == -1; the pool must still start."""
+    import subprocess
+    import sys
+
+    code = (
+        "import sys\n"
+        "class Fake:\n"
+        "    def write(self, s): return len(s)\n"
+        "    def flush(self): pass\n"
+        "    def fileno(self): return -1\n"
+        "sys.stderr = Fake()\n"
+        "from themis.sessions import cache\n"
+        "from themis.profiles.discover import discover_profiles\n"
+        "cache.POOL_THRESHOLD = 1\n"
+        "print(len(cache.load_sessions(discover_profiles(), rebuild=True)))\n"
+    )
+    done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert done.stdout.strip() == "3"
+
+
 def test_concurrent_loads_do_not_collide_on_temp_files(tree: dict[str, Path]) -> None:
     """The Sessions pane and the resource loader scan in parallel threads of one process."""
     from concurrent.futures import ThreadPoolExecutor
