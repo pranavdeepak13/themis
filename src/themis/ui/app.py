@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import re
 
-from textual import on, work
+from textual import events, on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal
+from textual.containers import Vertical
 from textual.screen import ModalScreen
 from textual.theme import Theme
-from textual.widgets import ContentSwitcher, Footer, Header, OptionList, Tab, Tabs
-from textual.widgets.option_list import Option
+from textual.widgets import ContentSwitcher, Footer, Header, Static, Tab, Tabs
 
 from themis.resources.store import ResourceData, load_all
 from themis.ui.screens.insights import InsightsPane
@@ -78,6 +77,7 @@ class ThemisApp(App[None]):
         Binding("t", "pane('do_tag')", "Tag"),
         Binding("n", "pane('do_rename')", "Rename"),
         Binding("e", "pane('do_export')", "Export"),
+        Binding("b", "toggle_nav", "Sections"),
         Binding("question_mark", "help", "Help"),
         Binding("v", "pane('do_restore')", "Archives", show=False),
         Binding("c", "pane('do_copy')", "Copy to", show=False),
@@ -102,30 +102,37 @@ class ThemisApp(App[None]):
     def compose(self) -> ComposeResult:
         yield Header()
         yield Tabs(Tab("All", id="p-all"), id="profiles")
-        with Horizontal(id="shell"):
-            yield OptionList(*[Option(label, id=sid) for sid, label, *_ in SECTIONS], id="nav")
-            with ContentSwitcher(initial="sessions", id="main"):
-                for sid, label, phase, blurb in SECTIONS:
-                    if sid == "sessions":
-                        yield SessionsPane(id=sid)
-                    elif sid in RESOURCE_KINDS:
-                        yield ResourcePane(RESOURCE_KINDS[sid], id=sid)
-                    elif sid == "settings":
-                        yield SettingsPane(id=sid)
-                    elif sid == "compare":
-                        yield ComparePane(id=sid)
-                    elif sid == "doctor":
-                        yield DoctorPane(id=sid)
-                    elif sid == "insights":
-                        yield InsightsPane(id=sid)
-                    else:
-                        yield PlaceholderPane(label, phase, blurb, id=sid)
+        with ContentSwitcher(initial="sessions", id="main"):
+            for sid, label, phase, blurb in SECTIONS:
+                if sid == "sessions":
+                    yield SessionsPane(id=sid)
+                elif sid in RESOURCE_KINDS:
+                    yield ResourcePane(RESOURCE_KINDS[sid], id=sid)
+                elif sid == "settings":
+                    yield SettingsPane(id=sid)
+                elif sid == "compare":
+                    yield ComparePane(id=sid)
+                elif sid == "doctor":
+                    yield DoctorPane(id=sid)
+                elif sid == "insights":
+                    yield InsightsPane(id=sid)
+                else:
+                    yield PlaceholderPane(label, phase, blurb, id=sid)
+        with Vertical(id="navbar"):
+            yield Static(id="nav-toggle")
+            yield Tabs(
+                *[
+                    Tab(f"{i} {label}" if i < 10 else label, id=f"s-{sid}")
+                    for i, (sid, label, *_) in enumerate(SECTIONS, 1)
+                ],
+                id="nav",
+            )
         yield Footer()
 
     def on_mount(self) -> None:
         self.register_theme(THEMIS_THEME)
         self.theme = "themis"
-        self.query_one("#nav", OptionList).highlighted = 0
+        self._sync_nav()
         self.resource_data: ResourceData | None = None
         self._load_resources()
 
@@ -156,17 +163,38 @@ class ThemisApp(App[None]):
 
     # ------------------------------------------------------------------ navigation
 
-    @on(OptionList.OptionHighlighted, "#nav")
-    @on(OptionList.OptionSelected, "#nav")
-    def _nav(self, event: OptionList.OptionHighlighted | OptionList.OptionSelected) -> None:
-        if event.option.id:
-            self.query_one("#main", ContentSwitcher).current = event.option.id
+    nav_open = True
+
+    @on(Tabs.TabActivated, "#nav")
+    def _nav(self, event: Tabs.TabActivated) -> None:
+        sid = (event.tab.id or "")[2:]
+        if sid:
+            self.query_one("#main", ContentSwitcher).current = sid
+            self._sync_nav()
 
     def action_section(self, section: str) -> None:
         if isinstance(self.screen, ModalScreen):
             return
-        nav = self.query_one("#nav", OptionList)
-        nav.highlighted = [s[0] for s in SECTIONS].index(section)
+        self.query_one("#nav", Tabs).active = f"s-{section}"
+
+    def action_toggle_nav(self) -> None:
+        if isinstance(self.screen, ModalScreen):
+            return
+        self.nav_open = not self.nav_open
+        self._sync_nav()
+
+    @on(events.Click, "#nav-toggle")
+    def _click_toggle(self) -> None:
+        self.action_toggle_nav()
+
+    def _sync_nav(self) -> None:
+        """Expanded: the full section strip. Collapsed: one line naming the current section."""
+        current = self.query_one("#main", ContentSwitcher).current or "sessions"
+        label = next(lbl for sid, lbl, *_ in SECTIONS if sid == current)
+        self.query_one("#nav", Tabs).display = self.nav_open
+        arrow = "▾" if self.nav_open else "▸"
+        hint = "b collapse" if self.nav_open else "b expand · 1-9 jump"
+        self.query_one("#nav-toggle", Static).update(f" {arrow} {label}   [dim]{hint}[/dim]")
 
     # ------------------------------------------------------------------ profile bar
 

@@ -178,3 +178,29 @@ def test_insights_empty_state_and_export(tree: dict[str, Path]) -> None:
         assert all("login bug" not in p.read_text() for p in out)  # no transcript content
 
     run_app(scenario)
+
+
+def test_marketplace_row_has_no_toggle(tree: dict[str, Path]) -> None:
+    async def scenario(app: ThemisApp, pilot: Pilot) -> None:
+        await show(app, pilot, "plugins")
+        pane = app.query_one("#plugins", ResourcePane)
+        pane._show(next(g for g in pane.groups if g.kind == "marketplace"))
+        pane.do_toggle()
+        await pilot.pause()
+        assert not isinstance(app.screen, ConfirmModal | ChoiceModal)
+
+    run_app(scenario)
+
+
+def test_section_strip_collapses_and_still_navigates(tree: dict[str, Path]) -> None:
+    async def scenario(app: ThemisApp, pilot: Pilot) -> None:
+        assert app.query_one("#nav").display
+        await pilot.press("b")
+        await pilot.pause()
+        assert not app.query_one("#nav").display
+        await pilot.press("5")
+        await pilot.pause()
+        assert app.query_one("#main", ContentSwitcher).current == "plugins"
+        assert "Plugins" in str(app.query_one("#nav-toggle", Static).render())
+
+    run_app(scenario)

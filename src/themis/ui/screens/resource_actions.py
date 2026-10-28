@@ -172,6 +172,11 @@ class ResourceActions(Vertical):
         g = self.current_group()
         if g is None:
             return
+        if g.kind == "marketplace":
+            self.notify(
+                "A marketplace has no on/off switch. Toggle its plugins instead.", severity="warning", timeout=6
+            )
+            return
         if g.kind == "mcp":
             members = [m for m in g.members if m.origin == "user"]
             if not members:

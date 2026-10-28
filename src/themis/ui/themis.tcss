@@ -23,21 +23,23 @@ Footer {
     background: #0a0a0a;
 }
 
-#shell {
-    height: 1fr;
+#navbar {
+    height: auto;
+    background: #050505;
+    border-top: solid #2a2a2a;
+}
+
+#nav-toggle {
+    height: 1;
+    text-style: bold;
+}
+
+#nav-toggle:hover {
+    background: #111111;
 }
 
 #nav {
-    width: 16;
-    background: #050505;
-    border-right: solid #2a2a2a;
-    padding: 1 0;
-}
-
-#nav > .option-list--option-highlighted {
-    background: #fafafa;
-    color: #000000;
-    text-style: bold;
+    height: 3;
 }
 
 #main {
@@ -448,16 +450,6 @@ Tab.-active {
 Underline > .underline--bar {
     color: #fafafa;
     background: #2a2a2a;
-}
-
-#nav {
-    background: #000000;
-    border-right: solid #1c1c1c;
-    scrollbar-size-vertical: 0;
-}
-
-#nav > .option-list--option-hover {
-    background: #111111;
 }
 
 OptionList {

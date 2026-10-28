@@ -115,7 +115,7 @@ class ResourcePane(ResourceActions, LoadingMixin):
 
     def on_mount(self) -> None:
         self.query_one("#r-table", DataTable).add_columns(
-            "Name", "Scope", "Origin", "Profiles", "Info", "Tok", "Uses", "On", "Tags"
+            "Name", "On", "Profiles", "Scope", "Origin", "Info", "Tok", "Uses", "Tags"
         )
 
     # ------------------------------------------------------------------ data
@@ -139,13 +139,13 @@ class ResourcePane(ResourceActions, LoadingMixin):
             drift = " ⚠drift" if g.drifted else ""
             table.add_row(
                 _clip(g.name, 34),
+                Text(g.enabled_label, style=STATE_STYLE.get(g.enabled_label, "")),
+                ",".join(g.profiles),
                 Text(g.scope + drift, style=SCOPE_STYLE.get(g.scope, "")),
                 g.origin if g.origin_name is None else _clip(f"{g.origin}:{g.origin_name}", 22),
-                ",".join(g.profiles),
                 _clip(g.info, 40),
                 Text(str(g.first.tokens_startup or ""), justify="right"),
                 Text(str(g.usage.invocations or ""), justify="right"),
-                Text(g.enabled_label, style=STATE_STYLE.get(g.enabled_label, "")),
                 ",".join(g.tags),
                 key=g.key,
             )

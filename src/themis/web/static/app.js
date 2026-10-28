@@ -235,7 +235,8 @@ async function pageResources(page, kind) {
   if (!tracked) state.filter = "all";
   if (state.filter === "used") rows = rows.filter((r) => r.uses > 0);
   if (state.filter === "unused") rows = rows.filter((r) => !r.uses);
-  const reload = async () => { await load(true); if (state.selected) { const g = rows.find((r) => r.key === state.selected); } };
+  const reload = () => load(true);
+  const rowEls = new Map();
   const cols = [{ t: "Name", w: "minmax(0,2.2fr)" }, { t: "Used", w: "minmax(80px,1fr)" }, { t: "Sessions", w: "72px", r: 1 }, { t: "Last used", w: "84px" }, { t: "Startup tok", w: "86px", r: 1 }, { t: "Profiles", w: "minmax(0,1fr)" }, { t: "On", w: "48px", r: 1 }];
   const max = Math.max(1, ...rows.map((r) => r.uses));
   const table = h("div", { class: "table wide" }, headCols(cols));
@@ -249,6 +250,7 @@ async function pageResources(page, kind) {
       g.uses ? h("div", { style: "display:flex;gap:10px;align-items:center" }, h("div", { class: "meter", style: "flex:1" }, h("i", { style: `width:${Math.max(4, (g.uses / max) * 100)}%` })), h("span", { class: "num" }, g.uses)) : h("span", { class: "muted" }, tracked ? "unused" : "not tracked"),
       h("span", { class: "num r" }, g.sessions || "–"), h("span", { class: "muted" }, !tracked ? "–" : g.uses ? fmt.ago(g.last_used) : "never"), h("span", { class: "num r" }, g.startup_tokens || "–"),
       h("span", { class: "muted", style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, g.profiles.join(", ")), h("span", { class: "r" }, ctl));
+    rowEls.set(g.key, row);
     table.append(row);
   }
   if (!rows.length) table.append(h("div", { class: "empty" }, "Nothing here"));
@@ -256,6 +258,9 @@ async function pageResources(page, kind) {
     ? "Switches change enabledPlugins (settings.json) or disabledMcpServers (.claude.json). Plugin-provided MCP servers follow their plugin."
     : "Startup tokens are estimates (about 4 characters per token) for the name and description Claude loads each session.";
   page.replaceChildren(toolbar(`${rows.length} ${LABEL[kind]}${rows.length === 1 ? "" : "s"}${tracked ? ` · ${d.unused} unused` : ""}`, tracked), table, h("p", { class: "note" }, note));
+  const open = rows.find((g) => g.key === state.selected);
+  if (open) selectResource(open, rowEls.get(open.key), reload); // refresh the drawer so switches show the new state
+  else if (state.selected) closeDrawer();
 }
 
 function selectResource(g, row, reload) {
