@@ -92,7 +92,7 @@ async function refresh() {
 
 // ---------------------------------------------------------------- drawer / modal
 function closeDrawer() { state.selected = null; $("drawer").hidden = true; document.querySelectorAll(".row.sel").forEach((r) => r.classList.remove("sel")); }
-function openDrawer(...kids) { const d = $("drawer"); d.replaceChildren(...kids); d.hidden = false; d.scrollTop = 0; }
+function openDrawer(...kids) { const d = $("drawer"); d.replaceChildren(...kids.flat().filter((k) => k != null && k !== false)); d.hidden = false; d.scrollTop = 0; }
 const dhead = (title, sub) => h("div", { class: "dhead" }, h("div", {}, h("h3", {}, title), sub ? h("div", { class: "muted" }, sub) : null),
   h("button", { class: "btn sm ghost", "aria-label": "Close details", onclick: closeDrawer }, "Close"));
 const kv = (rows) => h("dl", { class: "kv" }, rows.filter((r) => r[1] != null && r[1] !== "").flatMap(([k, v]) => [h("dt", {}, k), h("dd", {}, v)]));
@@ -194,7 +194,7 @@ async function pageSessions(page) {
   const sortKey = state.sort === "uses" ? "recent" : state.sort;
   const d = await api("/api/sessions?" + qs({ q: state.q, sort: sortKey }));
   const cols = [{ t: "Session", w: "minmax(0,2.4fr)" }, { t: "Profile", w: "90px" }, { t: "Last active", w: "90px", k: "recent" }, { t: "Tokens", w: "80px", k: "tokens", r: 1 }, { t: "Cost", w: "70px", r: 1 }, { t: "Context", w: "70px", k: "context", r: 1 }];
-  const table = h("div", { class: "table" }, headCols(cols, sortKey, (k) => { state.sort = k; load(); }));
+  const table = h("div", { class: "table wide" }, headCols(cols, sortKey, (k) => { state.sort = k; load(); }));
   for (const s of d.rows) {
     const row = h("div", { class: "row", tabindex: "0", style: `--cols:${cols.map((c) => c.w).join(" ")}`, onclick: () => selectSession(s, row), onkeydown: (e) => e.key === "Enter" && row.click() },
       h("div", { class: "cell-name" }, h("b", {}, s.topic), h("span", {}, `${s.project} · ${s.model}`)),
@@ -238,7 +238,7 @@ async function pageResources(page, kind) {
   const reload = async () => { await load(true); if (state.selected) { const g = rows.find((r) => r.key === state.selected); } };
   const cols = [{ t: "Name", w: "minmax(0,2.2fr)" }, { t: "Used", w: "minmax(80px,1fr)" }, { t: "Sessions", w: "72px", r: 1 }, { t: "Last used", w: "84px" }, { t: "Startup tok", w: "86px", r: 1 }, { t: "Profiles", w: "minmax(0,1fr)" }, { t: "On", w: "48px", r: 1 }];
   const max = Math.max(1, ...rows.map((r) => r.uses));
-  const table = h("div", { class: "table" }, headCols(cols));
+  const table = h("div", { class: "table wide" }, headCols(cols));
   for (const g of rows) {
     const t = g.members.filter((m) => m.toggleable);
     let ctl = h("span", { class: "muted" }, "–");
