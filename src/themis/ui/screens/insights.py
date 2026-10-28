@@ -22,7 +22,7 @@ from themis.sessions.metrics import context_percent
 from themis.ui.screens.resources import LoadingMixin
 
 WINDOWS = [("7d", "7d"), ("30d", "30d"), ("90d", "90d"), ("all", None)]
-SEV_STYLE = {"high": "bold red", "medium": "yellow", "low": "cyan", "info": "dim"}
+SEV_STYLE = {"high": "bold reverse", "medium": "bold", "low": "", "info": "dim"}
 COST_NOTE = "API-equivalent estimate; all profiles are on a subscription, nothing is billed per token."
 
 
@@ -172,7 +172,7 @@ class InsightsPane(LoadingMixin):
                 Text(str(b.sessions), justify="right"),
                 Text(_pct(b.tokens.cache_hit_rate), justify="right"),
                 Text(f"${b.cost:,.2f}{'+' if b.cost_incomplete else ''}", justify="right"),
-                Text(analytics.bar(b.total, peak), style="cyan"),
+                Text(analytics.bar(b.total, peak), style="white"),
             )
         if not buckets:
             table = Text("Nothing to chart.", style="dim")
@@ -185,7 +185,7 @@ class InsightsPane(LoadingMixin):
         t = Table.grid(padding=(0, 2))
         t.add_row(Text("Final context fill (percent of window)", style="bold"), "")
         for label, n in stats.histogram:
-            t.add_row(label, Text(f"{n:>4}  " + analytics.bar(n, peak, 30), style="cyan"))
+            t.add_row(label, Text(f"{n:>4}  " + analytics.bar(n, peak, 30), style="white"))
         t.add_row("", "")
         t.add_row(
             "Compaction",
@@ -223,7 +223,7 @@ class InsightsPane(LoadingMixin):
         peak = max((n for _, n in tools), default=0)
         tt = Table("Tool", "Calls", "", title="Top tools", title_justify="left")
         for name, n in tools:
-            tt.add_row(name, Text(human(n), justify="right"), Text(analytics.bar(n, peak, 24), style="cyan"))
+            tt.add_row(name, Text(human(n), justify="right"), Text(analytics.bar(n, peak, 24), style="white"))
         out.add_row(tt)
         self.query_one("#i-top", Static).update(out)
 

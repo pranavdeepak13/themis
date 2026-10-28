@@ -17,14 +17,14 @@ FILES_SHOWN = 40
 
 def bar(pct: float, width: int = BAR_WIDTH) -> Text:
     filled = round(width * min(pct, 100) / 100)
-    color = "green" if pct < 60 else "yellow" if pct < 80 else "red"
+    color = "white" if pct < 80 else "bold reverse"
     text = Text("█" * filled, style=color)
     text.append("░" * (width - filled), style="grey37")
     return text
 
 
 def _section(title: str) -> Text:
-    return Text(f"\n{title}", style="bold cyan")
+    return Text(f"\n{title}", style="bold underline")
 
 
 def _kv(rows: list[tuple[str, RenderableType]]) -> Table:
@@ -58,7 +58,7 @@ def render_overview(row: Row, cfg: Config, retention_days: int | None = None) ->
         msg = f"Past the {retention_days}-day limit: Claude Code purges this at its next start." if left < 0 else (
             f"Purged by Claude Code in about {left:.0f} day(s) (cleanupPeriodDays={retention_days})."
         )  # fmt: skip
-        parts.append(Text("⚠ " + msg, style="bold yellow"))
+        parts.append(Text("⚠ " + msg, style="bold"))
     parts.append(
         _kv(
             [
@@ -134,5 +134,5 @@ def render_overview(row: Row, cfg: Config, retention_days: int | None = None) ->
     if len(s.related_files) > FILES_SHOWN:
         parts.append(Text(f"+{len(s.related_files) - FILES_SHOWN} smaller files not shown", style="dim"))
     if s.parse_errors:
-        parts.append(Text(f"\n{s.parse_errors} unparseable line(s) of {s.lines}", style="yellow"))
+        parts.append(Text(f"\n{s.parse_errors} unparseable line(s) of {s.lines}", style="italic"))
     return Group(*parts)

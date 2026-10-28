@@ -1,17 +1,17 @@
-/* Themis dark theme. Theme variables come from Textual's dark theme; accents are set here. */
+/* Themis monochrome theme: black, white and greys only. The Theme object lives in app.py. */
 
 Screen {
-    background: #0e1116;
-    color: #d7dde8;
+    background: #000000;
+    color: #fafafa;
 }
 
 Header {
-    background: #161b22;
-    color: #7ee0c3;
+    background: #0a0a0a;
+    color: #fafafa;
 }
 
 Footer {
-    background: #161b22;
+    background: #0a0a0a;
 }
 
 .hidden {
@@ -20,7 +20,7 @@ Footer {
 
 #profiles {
     height: 3;
-    background: #161b22;
+    background: #0a0a0a;
 }
 
 #shell {
@@ -29,14 +29,14 @@ Footer {
 
 #nav {
     width: 16;
-    background: #12161d;
-    border-right: solid #2a313c;
+    background: #050505;
+    border-right: solid #2a2a2a;
     padding: 1 0;
 }
 
 #nav > .option-list--option-highlighted {
-    background: #1f6f5c;
-    color: white;
+    background: #fafafa;
+    color: #000000;
     text-style: bold;
 }
 
@@ -62,16 +62,16 @@ SessionsPane {
 .filter {
     width: 1fr;
     min-width: 12;
-    background: #12161d;
-    border: tall #2a313c;
+    background: #050505;
+    border: tall #2a2a2a;
 }
 
 .filter:focus {
-    border: tall #7ee0c3;
+    border: tall #fafafa;
 }
 
 .filter.-invalid {
-    border: tall #e5534b;
+    border: tall #fafafa;
 }
 
 #statusbar {
@@ -81,7 +81,7 @@ SessionsPane {
 
 #status {
     width: 1fr;
-    color: #8b95a5;
+    color: #7a7a7a;
 }
 
 #progress {
@@ -90,8 +90,8 @@ SessionsPane {
 
 #banner {
     height: 3;
-    background: #3a2f12;
-    border: tall #b08800;
+    background: #0a0a0a;
+    border: tall #3d3d3d;
     padding: 0 1;
 }
 
@@ -99,7 +99,7 @@ SessionsPane {
     width: 1fr;
     content-align: left middle;
     height: 100%;
-    color: #f2cc60;
+    color: #fafafa;
 }
 
 #btn-archive-risk {
@@ -118,7 +118,7 @@ SessionsPane {
 #detail {
     width: 30%;
     min-width: 40;
-    border-left: solid #2a313c;
+    border-left: solid #2a2a2a;
     padding-left: 1;
 }
 
@@ -137,34 +137,34 @@ SessionsPane {
     width: 100%;
     height: 1fr;
     border-left: none;
-    border-top: solid #2a313c;
+    border-top: solid #2a2a2a;
     padding-left: 0;
 }
 
 DataTable {
     height: 1fr;
-    background: #0e1116;
+    background: #000000;
 }
 
 DataTable > .datatable--header {
-    background: #1b222c;
-    color: #7ee0c3;
+    background: #111111;
+    color: #fafafa;
     text-style: bold;
 }
 
 DataTable > .datatable--cursor {
-    background: #1f6f5c;
-    color: white;
+    background: #fafafa;
+    color: #000000;
 }
 
 #search-panel {
     height: 45%;
-    border-top: solid #2a313c;
+    border-top: solid #2a2a2a;
 }
 
 #search-status {
     height: 1;
-    color: #8b95a5;
+    color: #7a7a7a;
 }
 
 #actions, #actions2 {
@@ -179,13 +179,13 @@ DataTable > .datatable--cursor {
 
 #bulk {
     height: 1;
-    background: #12261f;
+    background: #111111;
     margin-bottom: 1;
 }
 
 #bulk-text {
     width: 11;
-    color: #7ee0c3;
+    color: #fafafa;
 }
 
 #detail-tabs {
@@ -194,20 +194,20 @@ DataTable > .datatable--cursor {
 
 #timeline-status {
     height: 1;
-    color: #8b95a5;
+    color: #7a7a7a;
 }
 
 /* Placeholder sections */
 
 .placeholder-title {
     text-style: bold;
-    color: #7ee0c3;
+    color: #fafafa;
     padding: 2 4 0 4;
 }
 
 .placeholder-text {
     padding: 1 4;
-    color: #8b95a5;
+    color: #7a7a7a;
 }
 
 /* Modals */
@@ -222,13 +222,13 @@ ModalScreen {
     max-width: 110;
     height: auto;
     max-height: 85%;
-    background: #161b22;
-    border: thick #1f6f5c;
+    background: #0a0a0a;
+    border: thick #fafafa;
     padding: 1 2;
 }
 
 #dialog.danger {
-    border: thick #e5534b;
+    border: thick #fafafa;
 }
 
 #dialog-title {
@@ -256,7 +256,7 @@ ModalScreen {
 }
 
 #resume-command {
-    background: #0e1116;
+    background: #000000;
     padding: 1 2;
     margin-bottom: 1;
 }
@@ -391,4 +391,246 @@ InsightsPane {
 
 #i-advice-actions Button {
     margin-right: 1;
+}
+
+
+/* ---- monochrome refinements ---- */
+* {
+    scrollbar-background: #000000;
+    scrollbar-background-hover: #000000;
+    scrollbar-background-active: #000000;
+    scrollbar-color: #2a2a2a;
+    scrollbar-color-hover: #3d3d3d;
+    scrollbar-color-active: #7a7a7a;
+    scrollbar-size-vertical: 1;
+}
+
+Header {
+    text-style: bold;
+    color: #fafafa;
+}
+
+Footer {
+    background: #000000;
+    color: #7a7a7a;
+}
+
+Footer FooterKey {
+    background: #000000;
+    color: #7a7a7a;
+}
+
+Footer FooterKey .footer-key--key {
+    background: #000000;
+    color: #fafafa;
+    text-style: bold;
+}
+
+Tabs {
+    background: #000000;
+}
+
+Tab {
+    color: #7a7a7a;
+}
+
+Tab:hover {
+    color: #fafafa;
+    background: #000000;
+}
+
+Tab.-active {
+    color: #fafafa;
+    text-style: bold;
+    background: #000000;
+}
+
+Underline > .underline--bar {
+    color: #fafafa;
+    background: #2a2a2a;
+}
+
+#nav {
+    background: #000000;
+    border-right: solid #1c1c1c;
+    scrollbar-size-vertical: 0;
+}
+
+#nav > .option-list--option-hover {
+    background: #111111;
+}
+
+OptionList {
+    background: #000000;
+    border: none;
+}
+
+OptionList:focus {
+    border: none;
+}
+
+Input {
+    background: #0a0a0a;
+    border: round #2a2a2a;
+    color: #fafafa;
+}
+
+Input:focus {
+    border: round #fafafa;
+}
+
+Input > .input--placeholder {
+    color: #4a4a4a;
+}
+
+DataTable {
+    border: none;
+}
+
+DataTable > .datatable--hover {
+    background: #111111;
+}
+
+DataTable > .datatable--header {
+    color: #7a7a7a;
+    text-style: bold;
+    background: #0a0a0a;
+}
+
+DataTable > .datatable--header-cursor, DataTable > .datatable--header-hover {
+    background: #111111;
+    color: #fafafa;
+}
+
+DataTable > .datatable--fixed-cursor {
+    background: #fafafa;
+    color: #000000;
+}
+
+TabbedContent, TabPane {
+    background: #000000;
+}
+
+/* Buttons: outlined, quiet; the primary action is solid white */
+Button {
+    background: #000000;
+    color: #fafafa;
+    border: round #2a2a2a;
+    border-top: round #2a2a2a;
+    border-bottom: round #2a2a2a;
+    text-style: none;
+    height: 3;
+}
+
+Button:hover {
+    background: #111111;
+    border: round #7a7a7a;
+}
+
+Button:focus {
+    text-style: bold;
+    border: round #fafafa;
+}
+
+Button.-primary, Button.-success, Button.-warning {
+    background: #fafafa;
+    color: #000000;
+    border: round #fafafa;
+    text-style: bold;
+}
+
+Button.-primary:hover, Button.-success:hover, Button.-warning:hover {
+    background: #d0d0d0;
+    border: round #d0d0d0;
+}
+
+Button.-error {
+    background: #000000;
+    color: #fafafa;
+    border: round #fafafa;
+    text-style: bold;
+}
+
+Button.-error:hover {
+    background: #fafafa;
+    color: #000000;
+}
+
+Button.-textual-compact {
+    height: 1;
+    border: none;
+    padding: 0 2;
+    background: #111111;
+    color: #fafafa;
+}
+
+Button.-textual-compact:hover {
+    background: #2a2a2a;
+    border: none;
+}
+
+Button.-textual-compact.-primary, Button.-textual-compact.-success, Button.-textual-compact.-warning {
+    background: #fafafa;
+    color: #000000;
+}
+
+Button.-textual-compact.-primary:hover, Button.-textual-compact.-success:hover {
+    background: #d0d0d0;
+}
+
+Button:disabled {
+    opacity: 50%;
+}
+
+Switch {
+    background: #000000;
+    border: round #2a2a2a;
+}
+
+Switch.-on > .switch--slider {
+    color: #fafafa;
+}
+
+Checkbox, RadioButton {
+    background: #000000;
+}
+
+ProgressBar Bar > .bar--bar {
+    color: #fafafa;
+}
+
+ProgressBar Bar > .bar--complete {
+    color: #fafafa;
+}
+
+#dialog {
+    background: #050505;
+    border: round #3d3d3d;
+}
+
+#dialog.danger {
+    border: double #fafafa;
+}
+
+#r-detail, #i-advice-detail {
+    border-left: solid #1c1c1c;
+}
+
+#detail {
+    border-left: solid #1c1c1c;
+}
+
+LoadingIndicator {
+    color: #fafafa;
+    background: #000000;
+}
+
+Toast {
+    background: #0a0a0a;
+    border-left: outer #fafafa;
+    color: #fafafa;
+}
+
+Toast.-warning, Toast.-error {
+    border-left: outer #fafafa;
 }

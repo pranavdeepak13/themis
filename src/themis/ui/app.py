@@ -9,6 +9,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.screen import ModalScreen
+from textual.theme import Theme
 from textual.widgets import ContentSwitcher, Footer, Header, OptionList, Tab, Tabs
 from textual.widgets.option_list import Option
 
@@ -40,6 +41,23 @@ RESOURCE_KINDS: dict[str, tuple[str, ...]] = {
     "mcp": ("mcp",),
     "hooks": ("hook",),
 }
+
+
+THEMIS_THEME = Theme(
+    name="themis",
+    primary="#fafafa",
+    secondary="#b4b4b4",
+    accent="#fafafa",
+    foreground="#fafafa",
+    background="#000000",
+    surface="#0a0a0a",
+    panel="#111111",
+    success="#fafafa",
+    warning="#b4b4b4",
+    error="#fafafa",
+    dark=True,
+    variables={"block-cursor-text-style": "bold", "input-selection-background": "#fafafa 30%"},
+)
 
 
 def _tab_id(name: str) -> str:
@@ -105,6 +123,8 @@ class ThemisApp(App[None]):
         yield Footer()
 
     def on_mount(self) -> None:
+        self.register_theme(THEMIS_THEME)
+        self.theme = "themis"
         self.query_one("#nav", OptionList).highlighted = 0
         self.resource_data: ResourceData | None = None
         self._load_resources()

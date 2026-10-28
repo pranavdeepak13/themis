@@ -151,7 +151,7 @@ class ResumeModal(ModalScreen[str | None]):
             yield Label("Resume this session", id="dialog-title")
             yield Static(self._command, id="resume-command", markup=False)
             if self._cwd_missing:
-                yield Label("[yellow]The session's working directory no longer exists on disk.[/yellow]")
+                yield Label("[bold]The session's working directory no longer exists on disk.[/bold]")
             if not self._can_launch:
                 yield Label("[dim]Set resume_launcher in ~/.themis/config.toml to open this in another terminal.[/dim]")
             with Horizontal(id="dialog-buttons"):

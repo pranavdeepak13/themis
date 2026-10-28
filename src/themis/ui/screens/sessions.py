@@ -153,7 +153,7 @@ class SessionsPane(SessionActions):
 
     def _load_failed(self, message: str) -> None:
         self.query_one("#progress", ProgressBar).display = False
-        self.query_one("#status", Static).update(Text(f"Load failed: {message}", style="bold red"))
+        self.query_one("#status", Static).update(Text(f"Load failed: {message}", style="bold reverse"))
         self.loaded = True
 
     def _loaded(self, cfg, profiles, sessions, meta, risky, policy) -> None:  # noqa: ANN001
@@ -233,12 +233,12 @@ class SessionsPane(SessionActions):
 
     def _cells(self, r: Row) -> list[Text]:
         s = r.summary
-        ctx_style = "red" if r.context_pct >= 80 else "yellow" if r.context_pct >= 60 else ""
+        ctx_style = "bold reverse" if r.context_pct >= 80 else "bold" if r.context_pct >= 60 else ""
         topic = Text(("⚠ " if r.risk_days_left is not None else "") + _clip(r.topic, TOPIC_WIDTH))
         if r.risk_days_left is not None:
-            topic.stylize("yellow", 0, 1)
+            topic.stylize("bold", 0, 1)
         return [
-            Text("✓" if r.key in self.marked else " ", style="bold green"),
+            Text("✓" if r.key in self.marked else " ", style="bold"),
             Text(s.profile),
             Text(when_short(s.ended_at)),
             topic,
@@ -248,7 +248,7 @@ class SessionsPane(SessionActions):
             Text(f"{r.context_pct:.0f}", style=ctx_style, justify="right"),
             Text(str(len(s.memory_writes)), justify="right"),
             Text(human_bytes(s.disk_bytes), justify="right"),
-            Text(_clip(", ".join(r.tags), 14), style="cyan"),
+            Text(_clip(", ".join(r.tags), 14), style="dim"),
         ]
 
     def _update_status(self) -> None:
@@ -286,7 +286,7 @@ class SessionsPane(SessionActions):
 
     def _refresh_mark(self, key: str) -> None:
         table = self.query_one("#table", DataTable)
-        mark = Text("✓" if key in self.marked else " ", style="bold green")
+        mark = Text("✓" if key in self.marked else " ", style="bold")
         table.update_cell(key, "mark", mark)
         self._update_status()
 
@@ -360,7 +360,7 @@ class SessionsPane(SessionActions):
             self.app.call_from_thread(self._timeline_ready, row.key, items)
 
     def _timeline_failed(self, message: str) -> None:
-        self.query_one("#timeline-status", Static).update(Text(f"Cannot read transcript: {message}", style="red"))
+        self.query_one("#timeline-status", Static).update(Text(f"Cannot read transcript: {message}", style="bold"))
 
     def _timeline_ready(self, key: str, items: list) -> None:  # noqa: ANN001
         if key != self.selected_key:

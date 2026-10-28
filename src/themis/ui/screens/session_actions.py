@@ -35,7 +35,7 @@ def _files_table(plan: FilePlan, limit: int = FILES_LISTED) -> Table:
     return t
 
 
-def _reasons(reasons: list[str], style: str = "red") -> Group:
+def _reasons(reasons: list[str], style: str = "bold") -> Group:
     return Group(*[Text(f"✗ {r}", style=style) for r in reasons[:12]])
 
 
@@ -187,9 +187,9 @@ class SessionActions(Vertical):
                     )
                 )
         for (_, summary), plan in blocked:
-            parts.append(Text(f"\nRefused {summary.profile}/{summary.session_id[:8]}:", style="bold red"))
+            parts.append(Text(f"\nRefused {summary.profile}/{summary.session_id[:8]}:", style="bold reverse"))
             parts.append(_reasons(plan.refusals))
-        parts.append(Text("\nThis cannot be undone. Archive first if you may want it back.", style="bold yellow"))
+        parts.append(Text("\nThis cannot be undone. Archive first if you may want it back.", style="bold"))
         single = len(ok) == 1 and len(plans) == 1
         token = ok[0][0][1].session_id[:8] if single else f"delete {len(ok)}"
         modal = ConfirmModal(
@@ -228,7 +228,7 @@ class SessionActions(Vertical):
             Text("Written to ~/.themis/archive/<profile>/ with a manifest. The originals are not deleted."),
         ]
         for (_, s), r in bad:
-            parts += [Text(f"\n{s.profile}/{s.session_id[:8]}:", style="bold red"), _reasons(r.reasons)]
+            parts += [Text(f"\n{s.profile}/{s.session_id[:8]}:", style="bold reverse"), _reasons(r.reasons)]
         single_row = rows[0] if len(ok) == 1 and len(rows) == 1 else None
 
         def handle(result: tuple[bool, bool] | None) -> None:
@@ -379,7 +379,7 @@ class SessionActions(Vertical):
                 ),
             ]
             if move:
-                parts.append(Text("The source files are deleted after the copy.", style="bold yellow"))
+                parts.append(Text("The source files are deleted after the copy.", style="bold"))
             if dry.reasons:
                 parts.append(_reasons(dry.reasons))
             token = actions.delete_token(row.summary) if move else None

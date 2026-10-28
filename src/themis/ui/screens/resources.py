@@ -22,22 +22,22 @@ from themis.resources.view import Group, build_groups
 from themis.ui.screens.resource_actions import ResourceActions
 
 SCOPE_STYLE = {
-    "global": "bold green",
-    "shared": "cyan",
-    "profile-only": "yellow",
-    "plugin": "magenta",
-    "project": "blue",
+    "global": "bold",
+    "shared": "",
+    "profile-only": "italic",
+    "plugin": "underline",
+    "project": "dim",
 }
 STATE_STYLE = {
-    "symlink": "green",
-    "copy": "yellow",
-    "drift": "bold red",
-    "local": "white",
-    "on": "green",
-    "off": "red",
-    "yes": "cyan",
-    "plugin": "magenta",
-    "project": "blue",
+    "symlink": "",
+    "copy": "italic",
+    "drift": "bold reverse",
+    "local": "",
+    "on": "bold",
+    "off": "dim strike",
+    "yes": "bold",
+    "plugin": "underline",
+    "project": "dim",
     "synced": "dim",
     "user": "white",
 }
@@ -203,7 +203,8 @@ class ResourcePane(ResourceActions, LoadingMixin):
         t.add_row("name", Text(g.name, style="bold"))
         t.add_row("kind / origin", f"{f.kind} / {g.origin}" + (f" ({g.origin_name})" if g.origin_name else ""))
         t.add_row(
-            "scope", Text(g.scope, style=SCOPE_STYLE.get(g.scope, "")) + Text("  DRIFTED" if g.drifted else "", "red")
+            "scope",
+            Text(g.scope, style=SCOPE_STYLE.get(g.scope, "")) + Text("  DRIFTED" if g.drifted else "", "bold reverse"),
         )
         if f.description:
             t.add_row("description", f.description)
@@ -250,11 +251,11 @@ class ResourcePane(ResourceActions, LoadingMixin):
             out.append(f"{g.first.profile} vs {peer.profile}\n", style="bold")
             for line in diff_resources(g.first, peer).splitlines():
                 style = (
-                    "green"
+                    "bold"
                     if line.startswith("+")
-                    else "red"
+                    else "dim strike"
                     if line.startswith("-")
-                    else "cyan"
+                    else "dim"
                     if line.startswith("@@")
                     else ""
                 )
@@ -398,7 +399,7 @@ class ComparePane(LoadingMixin):
 
 # ====================================================================== doctor
 
-SEVERITY_STYLE = {"error": "bold red", "warning": "yellow", "info": "blue"}
+SEVERITY_STYLE = {"error": "bold reverse", "warning": "bold", "info": "dim"}
 
 
 class DoctorPane(LoadingMixin):

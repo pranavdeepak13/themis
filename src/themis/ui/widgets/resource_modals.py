@@ -17,11 +17,11 @@ def diff_text(diff: str) -> Text:
     out = Text()
     for line in diff.splitlines():
         style = (
-            "green"
+            "bold"
             if line.startswith("+")
-            else "red"
+            else "dim strike"
             if line.startswith("-")
-            else "cyan"
+            else "dim"
             if line.startswith("@@")
             else ""
         )
@@ -114,7 +114,7 @@ class EditSettingsModal(ModalScreen[str | None]):
     def _changed(self, event: TextArea.Changed) -> None:
         problem = validate_settings_text(event.text_area.text)
         self.query_one("#edit-error", Static).update(
-            Text(problem, style="red") if problem else Text("Valid JSON.", style="green")
+            Text(problem, style="bold reverse") if problem else Text("Valid JSON.", style="bold")
         )
         self.query_one("#ok", Button).disabled = problem is not None
 

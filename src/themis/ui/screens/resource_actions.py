@@ -235,10 +235,10 @@ class ResourceActions(Vertical):
 
     def _show_health(self, results: list[tuple[str, list[mcp_health.ServerHealth], str | None]]) -> None:
         t = Table("profile", "server", "status", box=None)
-        colour = {"connected": "green", "needs-auth": "yellow", "failed": "red", "unknown": "dim"}
+        colour = {"connected": "bold", "needs-auth": "italic", "failed": "bold reverse", "unknown": "dim"}
         for profile, servers, error in results:
             if error:
-                t.add_row(profile, Text(error, style="red"), "")
+                t.add_row(profile, Text(error, style="bold reverse"), "")
             for s in servers:
                 t.add_row(profile, s.name, Text(s.status, style=colour.get(s.status, "")))
         self.app.push_screen(InfoModal("MCP health (claude mcp list)", t))
