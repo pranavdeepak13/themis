@@ -230,7 +230,9 @@ function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTi
 const LABEL = { skills: "skill", agents: "agent", commands: "command", plugins: "plugin", mcp: "MCP server", hooks: "hook" };
 async function pageResources(page, kind) {
   const d = await api(`/api/resources/${kind}?` + qs({ q: state.q }));
+  const tracked = kind !== "plugins" && kind !== "hooks"; // transcripts record no plugin or hook invocations
   let rows = d.rows;
+  if (!tracked) state.filter = "all";
   if (state.filter === "used") rows = rows.filter((r) => r.uses > 0);
   if (state.filter === "unused") rows = rows.filter((r) => !r.uses);
   const reload = async () => { await load(true); if (state.selected) { const g = rows.find((r) => r.key === state.selected); } };
@@ -244,8 +246,8 @@ async function pageResources(page, kind) {
     else if (t.length > 1) ctl = h("span", { class: "num muted" }, `${t.filter((m) => m.enabled).length}/${t.length}`);
     const row = h("div", { class: "row" + (state.selected === g.key ? " sel" : ""), tabindex: "0", style: `--cols:${cols.map((c) => c.w).join(" ")}`, onclick: () => selectResource(g, row, reload), onkeydown: (e) => e.key === "Enter" && row.click() },
       h("div", { class: "cell-name" }, h("b", {}, g.name), h("span", {}, g.description || g.info || g.origin)),
-      g.uses ? h("div", { style: "display:flex;gap:10px;align-items:center" }, h("div", { class: "meter", style: "flex:1" }, h("i", { style: `width:${Math.max(4, (g.uses / max) * 100)}%` })), h("span", { class: "num" }, g.uses)) : h("span", { class: "muted" }, "unused"),
-      h("span", { class: "num r" }, g.sessions || "–"), h("span", { class: "muted" }, g.uses ? fmt.ago(g.last_used) : "never"), h("span", { class: "num r" }, g.startup_tokens || "–"),
+      g.uses ? h("div", { style: "display:flex;gap:10px;align-items:center" }, h("div", { class: "meter", style: "flex:1" }, h("i", { style: `width:${Math.max(4, (g.uses / max) * 100)}%` })), h("span", { class: "num" }, g.uses)) : h("span", { class: "muted" }, tracked ? "unused" : "not tracked"),
+      h("span", { class: "num r" }, g.sessions || "–"), h("span", { class: "muted" }, !tracked ? "–" : g.uses ? fmt.ago(g.last_used) : "never"), h("span", { class: "num r" }, g.startup_tokens || "–"),
       h("span", { class: "muted", style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }, g.profiles.join(", ")), h("span", { class: "r" }, ctl));
     table.append(row);
   }
@@ -253,7 +255,7 @@ async function pageResources(page, kind) {
   const note = (kind === "plugins" || kind === "mcp")
     ? "Switches change enabledPlugins (settings.json) or disabledMcpServers (.claude.json). Plugin-provided MCP servers follow their plugin."
     : "Startup tokens are estimates (about 4 characters per token) for the name and description Claude loads each session.";
-  page.replaceChildren(toolbar(`${rows.length} ${LABEL[kind]}${rows.length === 1 ? "" : "s"} · ${d.unused} unused`, true), table, h("p", { class: "note" }, note));
+  page.replaceChildren(toolbar(`${rows.length} ${LABEL[kind]}${rows.length === 1 ? "" : "s"}${tracked ? ` · ${d.unused} unused` : ""}`, tracked), table, h("p", { class: "note" }, note));
 }
 
 function selectResource(g, row, reload) {
