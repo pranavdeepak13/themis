@@ -9,3 +9,4 @@ dist/
 # Real or generated transcripts must never be committed (see CLAUDE.md rule 7)
 *.jsonl
 .claude/settings.local.json
+docs/temp/

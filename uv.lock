@@ -1198,6 +1198,7 @@ name = "themis"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "aiohttp" },
     { name = "jsonschema" },
     { name = "orjson" },
     { name = "pydantic" },
@@ -1215,6 +1216,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiohttp", specifier = ">=3.9" },
     { name = "jsonschema", specifier = ">=4.26.0" },
     { name = "orjson", specifier = ">=3.10" },
     { name = "pydantic", specifier = ">=2.7" },

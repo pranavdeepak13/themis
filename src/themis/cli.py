@@ -106,12 +106,15 @@ def version() -> None:
 
 
 @app.command()
-def web(port: Annotated[int, typer.Option("--port", "-p", help="Port to serve on (127.0.0.1 only).")] = 8765) -> None:
-    """Serve the same UI in the browser at http://127.0.0.1:PORT."""
-    from themis.ui.serve import HOST, serve
+def web(
+    port: Annotated[int, typer.Option("--port", "-p", help="Port to serve on (127.0.0.1 only).")] = 8765,
+    terminal: Annotated[bool, typer.Option("--terminal", help="Serve the terminal UI in the browser instead.")] = False,
+) -> None:
+    """Serve the web app at http://127.0.0.1:PORT."""
+    from themis.ui.serve import HOST, serve, serve_terminal
 
     err.print(f"Themis web UI on http://{HOST}:{port}  (Ctrl+C to stop)")
-    serve(port)
+    (serve_terminal if terminal else serve)(port)
 
 
 @app.command()

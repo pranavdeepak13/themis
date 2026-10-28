@@ -32,7 +32,7 @@ uv run themis version
 uv run python scripts/smoke_real_copy.py  # write paths on a redacted temp copy of the real config
 uv run themis registry manifest|search "q" [-f term=value]|inspect <urn>  # ARD v0.91 registry
 uv run themis                # terminal UI (Sessions, resources, Compare, Doctor and Insights)
-uv run themis web [--port N] # same UI in the browser, 127.0.0.1 only, default port 8765
+uv run themis web [--port N] # web app (usage, resources, toggles), 127.0.0.1 only, default port 8765; --terminal serves the TUI instead
 uv run pytest                # tests (synthetic fixtures only)
 uv run ruff check . && uv run ruff format --check .
 sh scripts/install-hooks.sh  # install the pre-commit transcript guard
