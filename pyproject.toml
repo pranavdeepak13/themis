@@ -1,6 +1,6 @@
 [project]
 name = "themis"
-version = "0.2.1"
+version = "0.2.2"
 description = "Local manager for multiple Claude Code profiles: sessions, resources, token usage and advice."
 readme = "README.md"
 keywords = ["claude-code", "profiles", "tokens", "textual", "tui"]
